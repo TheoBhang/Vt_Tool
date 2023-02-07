@@ -1,0 +1,6 @@
+/Files/
+/Results/
+/__pycache__
+/V2
+.dockerignore
+.env

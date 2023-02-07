@@ -1,0 +1,5 @@
+click
+prettytable
+setuptools
+vt-py
+python-dotenv
