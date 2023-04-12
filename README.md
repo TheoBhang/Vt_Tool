@@ -795,7 +795,11 @@ def analyze_values(values: List[str], input_file: str, case_id: int, api_key: st
         print("No URLs to analyze.")
     time2 = datetime.now()
     total = time2 - time1
-    print("Analysis done in "+ str(total) +" !\nThank You for using VT Tools !")
+    print("Analysis done in "+ str(total) +" !")
+    print( "Thank you for using VT Tools ! ")
+    mispchoice(case_str,csvfilescreated)
+    for csvfile in csvfilescreated:
+        print("CSV file created : "+csvfile)
 ```
 
 Then we initialise the main function for the app launch.
