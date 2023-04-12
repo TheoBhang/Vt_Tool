@@ -166,6 +166,7 @@ The vt_tools2misp was made using script from the github MISP Repository for more
 ### Library used
 
 ```python
+
 # importing the module
 import os
 import re                           # to use RegEx
@@ -179,6 +180,8 @@ from typing import List             # to make a List object
 import csv                          # to interact with csv files 
 import vt                           # to interact with VirusTotal API V3
 from dotenv import load_dotenv
+from vt_tools2misp import mispchoice
+csvfilescreated = [] # list of files created
 ```
 
 ---
