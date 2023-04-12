@@ -42,7 +42,7 @@ from typing import List             # to make a List object
 import csv                          # to interact with csv files 
 import vt                           # to interact with VirusTotal API V3
 from dotenv import load_dotenv
-from vt2misp import mispchoice
+from vt_tools2misp import mispchoice
 csvfilescreated = [] # list of files created
 
 class Pattern:
