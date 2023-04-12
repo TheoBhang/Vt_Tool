@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="logo.png" alt= “VirusTotal_tool_logo” width="250" height="250">
+    <img src="assets/logo.png" alt= “VirusTotal_tool_logo” width="250" height="250">
 </p>
 
 # THA-CERT VirusTotal Analysis Tool Documentation
@@ -22,11 +22,13 @@ All you have to do is follow the guide and then grab a coffee while waiting for 
 
 All results will be sorted by Objects category and on two files, one is a txt containing a condensed version of a VT report helping people getting only interesting results. And the other is a CSV file, that can be translated to JSON to help sending the data , to MISP, Strangebee's The Hive or others.
 
+Then if you want you could send all the results to MISP by following the script options, and by default using the docker image.
+
 ## How to use ?
 
 ### Installation
 
-To install and run VT3_Tools, you will need to have python 3.9 or more installed on your system.
+To install and run VT_Tools, you will need to have python 3.9 or more installed on your system.
 
 - Clone the repository:
   - git clone <https://github.com/TheoBhang/Analysis_Tool>
@@ -101,13 +103,14 @@ And run :
 
 ```sh
 # For any help just launch
-docker run -v ${pwd}/Results:/vt/Results/ -v ${pwd}/Files:/vt/files/ --rm --name vt_tools vt3_tools:latest
+docker run -v ${pwd}/Results:/vt/Results/ -v ${pwd}/Files:/vt/files/ --network host --name vt_tools2misp --rm --name vt_tools vt3_tools:latest
 
 # If you want to use a .env in your local instance you will have to rebuild the image after modifying the env
 # By Default if you don't specify a VT API key the script will search in the environment variables.
 docker run \
 -v ${pwd}/Results:/vt/Results/ \
 -v ${pwd}/Files:/vt/files/ \
+--network host --name vt_tools2misp \
 --rm --name vt_tools vt3_tools:latest  \ 
 --input_file <Container Path to file> \
 --case_id <Case ID>
@@ -116,6 +119,7 @@ docker run \
 docker run \ 
 -v ${pwd}/Results:/vt/Results/ \ 
 -v ${pwd}/Files:/vt/files/ \ 
+--network host --name vt_tools2misp \
 --rm --name vt_tools vt3_tools:latest \ 
 --api_key <Your VT APIKEY> \ 
 [INPUT_VALUE] \ 
@@ -125,6 +129,7 @@ docker run \
 docker run \ 
 -v ${pwd}/Results:/vt/Results/ \ 
 -v ${pwd}/Files:/vt/files/ \ 
+--network host --name vt_tools2misp \
 --rm --name vt_tools vt3_tools:latest \ 
 --api_key <Your VT APIKEY> \ 
 --input_file <Container Path to file>  \ 
@@ -134,6 +139,7 @@ docker run \
 docker run \ 
 -v ${pwd}/Results:/vt/Results/ \ 
 -v ${pwd}/Files:/vt/files/ \ 
+--network host --name vt_tools2misp \
 --rm --name vt_tools vt3_tools:latest \ 
 --api_key_file <Container Path to api key file> \ 
 --input_file <Container Path to file>  \ 
@@ -148,8 +154,14 @@ docker run \
 - setuptools
 - vt-py
 - python-dotenv
+- pymisp
+- urllib3
 
 ## Code Explaining
+
+The vt_tools2misp was made using script from the github MISP Repository for more informations :
+
+- <https://github.com/MISP/PyMISP>
 
 ### Library used
 

@@ -3,3 +3,5 @@ prettytable
 setuptools
 vt-py
 python-dotenv
+pymisp
+urllib3

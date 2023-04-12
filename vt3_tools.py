@@ -42,7 +42,8 @@ from typing import List             # to make a List object
 import csv                          # to interact with csv files 
 import vt                           # to interact with VirusTotal API V3
 from dotenv import load_dotenv
-
+from vt2misp import mispchoice
+csvfilescreated = [] # list of files created
 
 class Pattern:
     """Analysis Patterns"""
@@ -245,7 +246,7 @@ def print_output_in_file(table, x, case_num, value_type):
 
     # Create the file path
     file_path = f"Results/{today}#{case_str}_{file_name_suffix}"
-
+    csvfilescreated.append(file_path)
     # Open the file and write the table to it
     with open(file_path.replace("csv", "txt"), "w", encoding="utf-8", newline="") as f:
         f.write(str(table))
@@ -522,7 +523,7 @@ def process_file_values(file_values):
 
     return values_list
 
-
+    
 @click.command()
 @click.argument('values', nargs=-1)
 @click.option('--input_file', help='Input file containing values to analyze.')
@@ -532,6 +533,8 @@ def process_file_values(file_values):
 def analyze_values(values: List[str], input_file: str, case_id: int, api_key: str, api_key_file: str) -> None:
     """Retrieve VirusTotal analysis information for a set of values (IP/Hash/URL)."""
     load_dotenv()
+    
+    print("Starting VT Tools Analysis")
     file_values = read_from_file(input_file)
     api_value = read_from_file(api_key_file)
     api_key = os.getenv("VTAPIKEY") or api_key or process_file_values(api_value)
@@ -589,8 +592,11 @@ def analyze_values(values: List[str], input_file: str, case_id: int, api_key: st
         print("No URLs to analyze.")
     time2 = datetime.now()
     total = time2 - time1
-    print("Analysis done in "+ str(total) +" !\nThank You for using VT Tools !")
-    
+    print("Analysis done in "+ str(total) +" !")
+    print( "Thank you for using VT Tools ! ")
+    mispchoice(case_str,csvfilescreated)
+    for csvfile in csvfilescreated:
+        print("CSV file created : "+csvfile)
 if __name__ == '__main__':
     a = """
 
@@ -653,3 +659,4 @@ JY7.         ~YJY^                 :!JYJJJ^...~JJ^
  """
     print(a, b)
     analyze_values()
+    
