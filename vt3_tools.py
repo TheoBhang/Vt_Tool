@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#encoding: utf-8
 """
  Fetches data from VT based on multiple values such as Hash, Ip or Urls
  and adds the data into two files for each categories of Objects
@@ -57,7 +57,7 @@ class Pattern:
         r'(?:https?://|www\.)(?:[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b)(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)')
 
     # pattern to match the most popular hashes (MD5, SHA-1, SHA-256)
-    pattern_Hash = re.compile(r'\s([a-fA-F0-9]{64})\s')
+    pattern_Hash = re.compile(r'\b([a-fA-F0-9]{64})\b')
 
     # pattern to match API keys that are alphanumeric and have a length of 32 characters or more
     pattern_API = re.compile(r'[a-zA-Z\d]{32}$')
@@ -104,22 +104,17 @@ def read_from_file(fname):
                 for line in fstring:
                     # Use regular expressions to extract values
                     # Extract IP addresses
-                    ip_match = re.search(Pattern.pattern_IP, line)
-                    if ip_match:  # If a match is found
-                        # Add the match to the 'ips' list
-                        file_values['ips'].append(ip_match.group(0))
+                    ip_addresses = []  # Initialize the list of IP addresses
 
-                    url_match = re.search(
-                        Pattern.pattern_URL, line)  # Extract URLs
-                    if url_match:  # If a match is found
-                        # Add the match to the 'urls' list
-                        file_values['urls'].append(url_match.group(0))
+                    # Extract all IP addresses from the text
+                    for ip in Pattern.pattern_IP.findall(line):
+                            file_values['ips'].append(ip)
 
-                    hash_match = re.search(
-                        Pattern.pattern_Hash, line)  # Extract hashes
-                    if hash_match:  # If a match is found
-                        # Add the match to the 'hashes' list
-                        file_values['hashes'].append(hash_match.group(1))
+                    for u in Pattern.pattern_URL.findall(line):
+                            file_values['urls'].append(u)
+
+                    for h in Pattern.pattern_Hash.findall(line):
+                            file_values['hashes'].append(h)
 
                     key_match = re.search(
                         Pattern.pattern_API, line)  # Extract keys
@@ -282,7 +277,9 @@ def output_ip_reports(ip_values, client, ip_dupes, case_number):
         else:
             try:
                 ip = client.get_object("/ip_addresses/" + i)
-
+            except:
+                ip = None
+            if ip:
                 ip_value = ip
                 if ip_value:
                     ip_count += 1
@@ -341,9 +338,8 @@ def output_ip_reports(ip_values, client, ip_dupes, case_number):
                     'link': link
                 }
                 )
-            except:
-                pass
-
+            else:
+                print("No IP found for : " + i)
     if ip_count == 0:
         print("No ip values were good for Analysis")
     else:
@@ -364,7 +360,9 @@ def output_hash_reports(hash_values, client, hash_dupes, case_num):
     for h in hash_values:
         try:
             file = client.get_object("/files/"+h)
-
+        except:
+            file = None
+        if file:
             hash_value = file.sha256
             if hash_value:
                 hash_count += 1
@@ -421,8 +419,8 @@ def output_hash_reports(hash_values, client, hash_dupes, case_num):
                     'link': link
                 }
             )
-        except:
-            pass
+        else:
+            print("No file found for hash: " + h)
     if hash_count == 0:
         print("No hash values were good for Analysis")
     else:
@@ -444,7 +442,9 @@ def output_url_reports(url_values, client, url_dupes, case_num):
         try:
             url_id = vt.url_id(u)
             url = client.get_object("/urls/"+url_id)
-
+        except:
+            url = None
+        if url:
             url_value = url.url
             if url_value:
                 url_count += 1
@@ -498,8 +498,8 @@ def output_url_reports(url_values, client, url_dupes, case_num):
                     'link': link
                 }
             )
-        except:
-            pass
+        else:
+            print("No url found for url: " + u)
     if url_count == 0:
         print("No url values were good for Analysis")
     else:
@@ -526,11 +526,12 @@ def process_file_values(file_values):
     
 @click.command()
 @click.argument('values', nargs=-1)
-@click.option('--input_file', help='Input file containing values to analyze.')
-@click.option('--case_id', help='Id for the case to create.')
-@click.option('--api_key', envvar='VTAPIKEY', help='VirusTotal API key, default VTAPIKEY env var.')
-@click.option('--api_key_file', help='VirusTotal API key in a file.')
-def analyze_values(values: List[str], input_file: str, case_id: int, api_key: str, api_key_file: str) -> None:
+@click.option('--input_file',"-f" , help='Input file containing values to analyze.')
+@click.option('--case_id',"-c", help='Id for the case to create.')
+@click.option('--api_key',"-a", envvar='VTAPIKEY', help='VirusTotal API key, default VTAPIKEY env var.')
+@click.option('--api_key_file',"-af", help='VirusTotal API key in a file.')
+@click.option('--proxy',"-p", help='Proxy to use for requests.')
+def analyze_values(values: List[str], input_file: str, case_id: int, api_key: str, api_key_file: str , proxy:str) -> None:
     """Retrieve VirusTotal analysis information for a set of values (IP/Hash/URL)."""
     load_dotenv()
     
@@ -540,8 +541,8 @@ def analyze_values(values: List[str], input_file: str, case_id: int, api_key: st
     api_key = os.getenv("VTAPIKEY") or api_key or process_file_values(api_value)
     if not api_key:
         exit()
-
-    client = vt.Client(api_key)
+    proxyhttp = os.getenv("PROXY") or proxy
+    client = vt.Client(api_key,proxy=proxyhttp)
 
     values = list(values)
     values.extend(process_file_values(file_values))
@@ -570,7 +571,9 @@ def analyze_values(values: List[str], input_file: str, case_id: int, api_key: st
         case_str = case_number.zfill(6)
         print("Begining case : #"+case_str+" ...\n")
     except:
-        print("No case Id given, use the --case_id argument \n") 
+        print("No case Id given, defaulting to 0 ,use the --case_id argument \n")
+        case_number = str(0)
+        case_str = case_number.zfill(6)
     
     if ip_values:
         print("Starting IP Analysis...")
@@ -649,10 +652,11 @@ JY7.         ~YJY^                 :!JYJJJ^...~JJ^
         Retrieve VirusTotal analysis information for a set of values (IP/Hash/URL).
 
         Options:
-        --input_file TEXT     Input file containing values to analyze.
-        --case_id NUMBER      Id for the case to create
-        --api_key TEXT        VirusTotal API key, default VTAPIKEY env var.
-        --api_key_file TEXT   VirusTotal API key in a file.
+        --input_file / -f TEXT     Input file containing values to analyze.
+        --case_id / -c NUMBER       Id for the case to create
+        --api_key / -a TEXT         VirusTotal API key, default VTAPIKEY env var.
+        --api_key_file / -af TEXT   VirusTotal API key in a file.
+        --proxy / -p TEXT          Proxy to use for requests.
 
         Arguments:
         VALUES  The values to analyze. Can be IP addresses, hashes, or URLs

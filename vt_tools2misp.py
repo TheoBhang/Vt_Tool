@@ -125,6 +125,7 @@ def main(misp, case_str,csvfilescreated):
                 info = line[10]
                 permalink = line[11]
                 if sha256 != "hash" and sha256 != "":
+                    # SIZE + FILENAME
                     print("Adding MISP object for " + sha256)
                     misp_object = pymisp.MISPObject(name='file')
                     obj1 = misp_object.add_attribute("sha256", value = sha256, type="sha256")
@@ -190,16 +191,16 @@ def misp_event(case_str,csvfilescreated):
         
 def mispchoice(case_str, csvfilescreated):
     print("Do you want to send the results to MISP ?")
-    print("1. Yes")
-    print("2. No")
+    print("Yes (1,Y,y,YES,yes)")
+    print("No (2,N,n,NO,no)")
     try:
         choice = input("Enter your choice : ")
     except:
         print("Can't input choice. Docker version enabled.")
         choice = "1"
-    if choice == "1":
+    if choice == "1" or choice == "Y" or choice == "y" or choice == "YES" or choice == "yes" or choice == "^[[B":
         misp_event(case_str, csvfilescreated )
-    elif choice == "2":
+    elif choice == "2" or choice == "N" or choice == "n" or choice == "NO" or choice == "no" or choice == "^[[F":
         print("MISP event not created")
     else:
         print("Wrong choice, retrying...")
