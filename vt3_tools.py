@@ -368,7 +368,7 @@ def output_hash_reports(hash_values, client, hash_dupes, case_num):
     value_type = "HASH"
     hash_count = 0
     # Table Params
-    table.field_names = ["Hash (Sha256)", "Malicious Score", "Suspicious Score", "Safe Score", "Extension","Size (Bytes)", "First_Scan_Date", "md5", "sha1", "ssdeep", "Type", "Type Probability", "Permalink"]
+    table.field_names = ["Hash (Sha256)", "Malicious Score", "Suspicious Score", "Safe Score", "Extension","Size (Bytes)", "First_Scan_Date", "md5", "sha1", "ssdeep","tlsh", "Type", "Type Probability", "Permalink"]
     table.reversesort = True
     x = []
     for h in hash_values:
@@ -399,6 +399,7 @@ def output_hash_reports(hash_values, client, hash_dupes, case_num):
             md5 = file.md5 if hasattr(file, 'md5') else "No md5 hash Found"
             ssdeep = file.ssdeep if hasattr(
                 file, 'ssdeep') else "No ssdeep Found"
+            tlsh = file.tlsh if hasattr(file, 'tlsh') else "No tlsh Found"
 
             link = "https://www.virustotal.com/gui/file/"+h
 
@@ -411,7 +412,7 @@ def output_hash_reports(hash_values, client, hash_dupes, case_num):
             safe_score = f"{harmless} \\ {malicious + undetected + suspicious + harmless}"
 
             table.add_row([sha256, malicious_score, suspi_score, safe_score,
-                          ext, size, date, md5, sha1, ssdeep, filetype, type_pb, link])
+                          ext, size, date, md5, sha1, ssdeep,tlsh, filetype, type_pb, link])
             x.append(
                 {
                     'hash': sha256,
@@ -424,6 +425,7 @@ def output_hash_reports(hash_values, client, hash_dupes, case_num):
                     'md5': md5,
                     'sha1': sha1,
                     'ssdeep': ssdeep,
+                    'tlsh': tlsh,
                     'info': {
                         'type': filetype,
                         'probability': type_pb,
@@ -502,13 +504,14 @@ def output_url_reports(url_values: List[str], client, url_dupes: List[str], case
 
         link = f"https://www.virustotal.com/gui/url/{url_obj.id}"
 
-        malicious = url_obj.last_analysis_stats["malicious"]
-        suspicious = url_obj.last_analysis_stats["suspicious"]
-        undetected = url_obj.last_analysis_stats["undetected"]
-        harmless = url_obj.last_analysis_stats["harmless"]
-        malicious_score = f"{malicious} \\ {malicious + undetected + suspicious + harmless}"
-        suspi_score = f"{suspicious} \\ {malicious + undetected + suspicious + harmless}"
-        safe_score = f"{harmless} \\ {malicious + undetected + suspicious + harmless}"
+        malicious = url_obj.last_analysis_stats.get("malicious", 0)
+        suspicious = url_obj.last_analysis_stats.get("suspicious", 0)
+        undetected = url_obj.last_analysis_stats.get("undetected", 0)
+        harmless = url_obj.last_analysis_stats.get("harmless", 0)
+        total = malicious + undetected + suspicious + harmless
+        malicious_score = f"{malicious} / {total}"
+        suspi_score = f"{suspicious} / {total}"
+        safe_score = f"{harmless} / {total}"
 
         table.add_row([url_value, malicious_score, suspi_score,
                       safe_score, title, number, finalUrl, date, link])
@@ -536,7 +539,7 @@ def output_url_reports(url_values: List[str], client, url_dupes: List[str], case
         print("No url values were good for Analysis")
     else:
         # We send the values to print the table in a file
-        print_output_in_file(table,x, case_id, value_type)
+        print_output_in_file(table, x, case_id, value_type)
 
 
 def process_file_values(file_values):

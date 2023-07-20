@@ -47,10 +47,11 @@ Usage: vt3_tools.py [OPTIONS] VALUES...
   Retrieve VirusTotal analysis information for a set of values (IP/Hash/URL).
 
 Options:
-    --input_file TEXT     Input file containing values to analyze.
-    --case_id NUMBER      Id for the case to create
-    --api_key TEXT        VirusTotal API key, default VTAPIKEY env var.
-    --api_key_file TEXT   VirusTotal API key in a file.
+    --input_file / -f TEXT     Input file containing values to analyze.
+    --case_id / -c NUMBER       Id for the case to create
+    --api_key / -a TEXT         VirusTotal API key, default VTAPIKEY env var.
+    --api_key_file / -af TEXT   VirusTotal API key in a file.
+    --proxy / -p TEXT          Proxy to use for requests.
 ```
 
 And run :
@@ -70,6 +71,9 @@ python3 .\vt3_tools.py --api_key <Your VT APIKEY> --case_id <Case ID> --input_fi
 
 # You can also use your api key from a file:
 python3 .\vt3_tools.py --api_key_file <Path to APIKEY file> --case_id <Case ID> --input_file <Path to file>
+
+# if you have to use a proxy to connect to the internet you can use the --proxy option
+python3 .\vt3_tools.py --api_key <Your VT APIKEY> --case_id <Case ID> --input_file <Path to file> --proxy <Proxy URL>
 ```
 
 #### Docker
