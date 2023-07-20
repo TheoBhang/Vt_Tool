@@ -368,7 +368,7 @@ def output_hash_reports(hash_values, client, hash_dupes, case_num):
     value_type = "HASH"
     hash_count = 0
     # Table Params
-    table.field_names = ["Hash (Sha256)", "Malicious Score", "Suspicious Score", "Safe Score", "Extension","Size (Bytes)", "First_Scan_Date", "md5", "sha1", "ssdeep","tlsh", "Type", "Type Probability", "Permalink"]
+    table.field_names = ["Hash (Sha256)", "Malicious Score", "Suspicious Score", "Safe Score", "Extension","Size (Bytes)", "First_Scan_Date", "md5", "sha1", "ssdeep","tlsh","Names", "Type", "Type Probability", "Permalink"]
     table.reversesort = True
     x = []
     for h in hash_values:
@@ -412,7 +412,7 @@ def output_hash_reports(hash_values, client, hash_dupes, case_num):
             safe_score = f"{harmless} \\ {malicious + undetected + suspicious + harmless}"
 
             table.add_row([sha256, malicious_score, suspi_score, safe_score,
-                          ext, size, date, md5, sha1, ssdeep,tlsh, filetype, type_pb, link])
+                          ext, size, date, md5, sha1, ssdeep,tlsh,filename, filetype, type_pb, link])
             x.append(
                 {
                     'hash': sha256,
@@ -426,10 +426,11 @@ def output_hash_reports(hash_values, client, hash_dupes, case_num):
                     'sha1': sha1,
                     'ssdeep': ssdeep,
                     'tlsh': tlsh,
+                    'names': filename,
                     'info': {
                         'type': filetype,
                         'probability': type_pb,
-                        'names': filename,
+                        
                         'first_scan': str(date)
                     },
                     'link': link

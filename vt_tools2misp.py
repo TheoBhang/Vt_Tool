@@ -54,12 +54,14 @@ def main(misp, case_str, csvfilescreated):
 
     for csvfile in csvfilescreated:
         with open(csvfile, newline='') as f:
-            csv_reader = csv.reader(f, delimiter=",")
-
+            csv_reader = csv.reader(f, delimiter=";")
+            counter = 0
             for line in csv_reader:
                 if not line:
                     continue
-
+                if counter == 0:
+                    counter += 1
+                    continue
                 object_name = None
                 attributes = {}
 
@@ -68,12 +70,14 @@ def main(misp, case_str, csvfilescreated):
                     attributes = {
                         "sha256": line[0],
                         "md5": line[7],
+                        "size":line[6],
                         "sha1": line[8],
                         "ssdeep": line[9],
                         "tlsh": line[10],
+                        "filename": line[11],
                         "vt-score": line[1],
-                        "text": line[11],
-                        "link": line[12]
+                        "text": line[12],
+                        "link": line[13]
                     }
                 elif "URL" in csvfile:
                     object_name = "url"
@@ -98,7 +102,6 @@ def main(misp, case_str, csvfilescreated):
                         "certificate": line[8],
                         "link": line[9]
                     }
-
                 if object_name:
                     misp_object = pymisp.MISPObject(name=object_name)
                     for attr_name, attr_value in attributes.items():
