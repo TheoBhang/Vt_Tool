@@ -37,10 +37,13 @@ import time                         # to make the Countdown timer
 import click                        # to pass arguments to the script
 from prettytable import PrettyTable # to format results in table
 from datetime import datetime       # to get today's date and hour
+import logging                      # to log the script's activity
 from collections import defaultdict # to create a dictionnary of values
 from typing import List             # to make a List object
 import csv                          # to interact with csv files 
-import vt                           # to interact with VirusTotal API V3
+from typing import List
+import vt                           # to interact with VirusTotal API V3    
+from vt import url_id                # to interact with VirusTotal API V3
 from dotenv import load_dotenv
 from vt_tools2misp import mispchoice
 csvfilescreated = [] # list of files created
@@ -65,32 +68,35 @@ class Pattern:
 # Read Values from file or user input
 
 
-def read_from_stdin():
+def read_from_stdin() -> List[str]:
     """
     Read lines from standard input.
 
     Returns:
         List[str]: The lines read from standard input.
+
+    Raises:
+        ValueError: If standard input is closed.
     """
     if sys.stdin.isatty():  # Check if standard input is a terminal
         return []  # If standard input is a terminal, return an empty list
     elif sys.stdin.closed:  # Check if standard input is closed
-        # If standard input is closed, raise an error
-        raise ValueError("Standard input is closed")
+        raise ValueError("Standard input is closed")  # Raise an error
     else:
         # If standard input is open, read lines and return them as a list
         return [line.strip() for line in sys.stdin]
 
 
-def read_from_file(fname):
+
+def read_from_file(fname: str) -> dict:
     """
-    Read values from a file
+    Read values from a file.
 
     Parameters:
-    fname (str): the name of the file to read from
+    fname (str): The name of the file to read from.
 
     Returns:
-    dict: a dictionary with four keys: 'ips', 'urls', 'hashes', and 'keys'. The values
+    dict: A dictionary with four keys: 'ips', 'urls', 'hashes', and 'keys'. The values
           corresponding to these keys are lists of extracted values from the file.
     """
     file_values = defaultdict(list)  # Initialize empty dictionary
@@ -108,23 +114,30 @@ def read_from_file(fname):
 
                     # Extract all IP addresses from the text
                     for ip in Pattern.pattern_IP.findall(line):
-                            file_values['ips'].append(ip)
+                        file_values['ips'].append(ip)
 
-                    for u in Pattern.pattern_URL.findall(line):
-                            file_values['urls'].append(u)
+                    # Extract all URLs from the text
+                    for url in Pattern.pattern_URL.findall(line):
+                        file_values['urls'].append(url)
 
-                    for h in Pattern.pattern_Hash.findall(line):
-                            file_values['hashes'].append(h)
+                    # Extract all hashes from the text
+                    for hash in Pattern.pattern_Hash.findall(line):
+                        file_values['hashes'].append(hash)
 
-                    key_match = re.search(
-                        Pattern.pattern_API, line)  # Extract keys
-                    if key_match:  # If a match is found
-                        # Add the match to the 'keys' list
+                    # Extract all API keys from the text
+                    key_match = Pattern.pattern_API.search(line)
+                    if key_match:
                         file_values['keys'].append(key_match.group(0))
+
+            # Print success message
+            print(f"Successfully read values from {fname}")
+        else:
+            # Print error message if no file name is provided
+            print("No file name provided")
 
     except IOError as e:  # Catch IOError if there is a problem reading the file
         # Print error message
-        print("I/O error({0}): {1}".format(e.errno, e.strerror))
+        print(f"I/O error({e.errno}): {e.strerror}")
 
     return file_values  # Return the dictionary of extracted values
 
@@ -203,10 +216,8 @@ def utc2local(utc):
     offset = datetime.fromtimestamp(epoch) - datetime.utcfromtimestamp(epoch)
     return utc + offset
 
-# Reports Output in terminal or in a file
 
-
-def print_output_in_file(table, x, case_num, value_type):
+def print_output_in_file(table: List[List[str]],x, case_num: str, value_type: str) -> None:
     """
     Print a report table to a file, with the file name depending on the data type.
 
@@ -242,12 +253,8 @@ def print_output_in_file(table, x, case_num, value_type):
     # Create the file path
     file_path = f"Results/{today}#{case_str}_{file_name_suffix}"
     csvfilescreated.append(file_path)
-    # Open the file and write the table to it
-    with open(file_path.replace("csv", "txt"), "w", encoding="utf-8", newline="") as f:
-        f.write(str(table))
-    print("\nResults successfully printed in : \n\t\\\t" +
-            file_path + "\n\t\\\t"+file_path.replace("csv", "txt")+"\n")
-    # Write the contents of the dictionary to a file in CSV format
+
+    # Write the contents of the table to a file in CSV format
     with open(file_path, 'w', newline='') as data_file:
         # Create the CSV writer object
         csv_writer = csv.DictWriter(
@@ -259,6 +266,13 @@ def print_output_in_file(table, x, case_num, value_type):
         # Write the data rows
         for obj in x:
             csv_writer.writerow(obj)
+
+    # Write the contents of the table to a file in TXT format
+    with open(file_path.replace("csv", "txt"), "w", encoding="utf-8", newline="") as f:
+        f.write(str(table))
+
+    print(f"\nResults successfully printed in:\n\t{file_path}\n\t{file_path.replace('csv', 'txt')}\n")
+
 
 
 def output_ip_reports(ip_values, client, ip_dupes, case_number):
@@ -344,7 +358,7 @@ def output_ip_reports(ip_values, client, ip_dupes, case_number):
         print("No ip values were good for Analysis")
     else:
         # We send the values to print the table in a file
-        print_output_in_file(table, x, case_id, value_type)
+        print_output_in_file(table,x, case_id, value_type)
 
 
 def output_hash_reports(hash_values, client, hash_dupes, case_num):
@@ -425,10 +439,11 @@ def output_hash_reports(hash_values, client, hash_dupes, case_num):
         print("No hash values were good for Analysis")
     else:
         # We send the values to print the table in a file
-        print_output_in_file(table, x, case_id, value_type)
+        print_output_in_file(table,x, case_id, value_type)
 
 
-def output_url_reports(url_values, client, url_dupes, case_num):
+
+def output_url_reports(url_values: List[str], client, url_dupes: List[str], case_num: str) -> None:
     """Print reports to stdout and write them to a file"""
     table = PrettyTable()
     case_id = case_num
@@ -440,86 +455,93 @@ def output_url_reports(url_values, client, url_dupes, case_num):
     x = []
     for u in url_values:
         try:
-            url_id = vt.url_id(u)
-            url = client.get_object("/urls/"+url_id)
+            url_obj: Url = client.get_object(f"/urls/{url_id(u)}")
+        except Exception as e:
+            print(f"Error fetching URL {u}: {e}")
+            continue
+        if not url_obj:
+            print(f"No url found for url: {u}")
+            continue
+        url_value = url_obj.url
+        if not url_value:
+            continue
+        url_count += 1
+        try:
+            meta = url_obj.html_meta or "No metadata Found"
         except:
-            url = None
-        if url:
-            url_value = url.url
-            if url_value:
-                url_count += 1
-            meta = url.html_meta if hasattr(
-                url, 'html_meta') else "No metadata Found"
-            finalUrl = url.last_final_url if hasattr(
-                url, 'last_final_url') else "No endpoints"
-            links = url.outgoing_links if hasattr(
-                url, 'outgoing_links') else "No links in url"
-            date = utc2local(url.first_submission_date) if hasattr(
-                url, 'first_submission_date') else "No date Found"
-            title = url.title if hasattr(url, 'title') else "No Title Found"
-            trackers = url.trackers if hasattr(
-                url, 'trackers') else "No tracker Found"
-            rc = url.redirection_chain if hasattr(
-                url, 'redirection_chain') else "No redirection chain Found"
-            target = url.targeted_brand if hasattr(
-                url, 'targeted_brand') else "No target brand Found"
-            number = url.times_submitted if hasattr(
-                url, 'times_submitted') else "None"
+            meta = "No metadata Found"
+        try:
+            finalUrl = url_obj.last_final_url or "No endpoints"
+        except:
+            finalUrl = "No endpoints"
+        try:
+            links = url_obj.outgoing_links or "No links in url"
+        except:
+            links = "No links in url"
+        try:
+            date = utc2local(url_obj.first_submission_date) or "No date Found"
+        except:
+            date = "No date Found"
+        try:
+            title = url_obj.title or "No Title Found"
+        except:
+            title = "No Title Found"
+        try:
+            trackers = url_obj.trackers or "No tracker Found"
+        except:
+            trackers = "No tracker Found"
+        try:
+            rc = url_obj.redirection_chain or "No redirection chain Found"
+        except:
+            rc = "No redirection chain Found"
+        try:
+            target = url_obj.targeted_brand or "No target brand Found"
+        except:
+            target = "No target brand Found"
+        number = url_obj.times_submitted or "None"
 
-            link = "https://www.virustotal.com/gui/url/"+url.id
+        link = f"https://www.virustotal.com/gui/url/{url_obj.id}"
 
-            malicious = url.last_analysis_stats["malicious"]
-            suspicious = url.last_analysis_stats["suspicious"]
-            undetected = url.last_analysis_stats["undetected"]
-            harmless = url.last_analysis_stats["harmless"]
-            malicious_score = f"{malicious} \\ {malicious + undetected + suspicious + harmless}"
-            suspi_score = f"{suspicious} \\ {malicious + undetected + suspicious + harmless}"
-            safe_score = f"{harmless} \\ {malicious + undetected + suspicious + harmless}"
+        malicious = url_obj.last_analysis_stats["malicious"]
+        suspicious = url_obj.last_analysis_stats["suspicious"]
+        undetected = url_obj.last_analysis_stats["undetected"]
+        harmless = url_obj.last_analysis_stats["harmless"]
+        malicious_score = f"{malicious} \\ {malicious + undetected + suspicious + harmless}"
+        suspi_score = f"{suspicious} \\ {malicious + undetected + suspicious + harmless}"
+        safe_score = f"{harmless} \\ {malicious + undetected + suspicious + harmless}"
 
-            table.add_row([url_value, malicious_score, suspi_score,
-                          safe_score, title, number, finalUrl, date, link])
-            x.append(
-                {
-                    'url': url_value,
-                    'malicious_score': malicious_score,
-                    'suspicious_score': suspi_score,
-                    'safe_score': safe_score,
-                    'metadatas': meta,
-                    'targeted': target,
-                    'info': {
-                        'title': title,
-                        'final_Url': finalUrl,
-                        'links': links,
-                        'redirection_chain': rc,
-                        'first_scan': str(date)
-                    },
-                    'trackers': trackers,
+        table.add_row([url_value, malicious_score, suspi_score,
+                      safe_score, title, number, finalUrl, date, link])
+        x.append(
+            {
+                'url': url_value,
+                'malicious_score': malicious_score,
+                'suspicious_score': suspi_score,
+                'safe_score': safe_score,
+                'metadatas': meta,
+                'targeted': target,
+                'info': {
+                    'title': title,
+                    'final_Url': finalUrl,
+                    'links': links,
+                    'redirection_chain': rc,
+                    'first_scan': str(date)
+                },
+                'trackers': trackers,
 
-                    'link': link
-                }
-            )
-        else:
-            print("No url found for url: " + u)
+                'link': link
+            }
+        )
     if url_count == 0:
         print("No url values were good for Analysis")
     else:
         # We send the values to print the table in a file
-        print_output_in_file(table, x, case_id, value_type)
+        print_output_in_file(table,x, case_id, value_type)
 
 
 def process_file_values(file_values):
     # Create a new list to store the values from the defaultdict
-    values_list = []
-
-    # Iterate over the values in the defaultdict and append them to the list
-    for value in file_values['ips']:
-        values_list.append(value)
-    for value in file_values['urls']:
-        values_list.append(value)
-    for value in file_values['hashes']:
-        values_list.append(value)
-    for value in file_values['keys']:
-        values_list.append(value)
+    values_list = [value for key in file_values for value in file_values[key]]
 
     return values_list
 
@@ -531,19 +553,19 @@ def process_file_values(file_values):
 @click.option('--api_key',"-a", envvar='VTAPIKEY', help='VirusTotal API key, default VTAPIKEY env var.')
 @click.option('--api_key_file',"-af", help='VirusTotal API key in a file.')
 @click.option('--proxy',"-p", help='Proxy to use for requests.')
-def analyze_values(values: List[str], input_file: str, case_id: int, api_key: str, api_key_file: str , proxy:str) -> None:
+
+def analyze_values(values: List[str], input_file: str, case_id: int, api_key: str, api_key_file: str, proxy: str) -> None:
     """Retrieve VirusTotal analysis information for a set of values (IP/Hash/URL)."""
     load_dotenv()
-    
-    print("Starting VT Tools Analysis")
+
+    logging.info("Starting VT Tools Analysis")
     file_values = read_from_file(input_file)
     api_value = read_from_file(api_key_file)
     api_key = os.getenv("VTAPIKEY") or api_key or process_file_values(api_value)
     if not api_key:
         exit()
     proxyhttp = os.getenv("PROXY") or proxy
-    client = vt.Client(api_key,proxy=proxyhttp)
-
+    client = vt.Client(api_key, proxy=proxyhttp)
     values = list(values)
     values.extend(process_file_values(file_values))
     values.extend(read_from_stdin())
@@ -556,50 +578,54 @@ def analyze_values(values: List[str], input_file: str, case_id: int, api_key: st
     # We filter list of ip to remove all None values
     ip_values = list(filter(None, ip_values))
     # We filter list of ip to remove all duplicates
-    ip_values = list(dict.fromkeys(ip_values))
+    ip_values = list(set(ip_values))
     # We filter list of hash to remove all None values
     hash_values = list(filter(None, hash_values))
     # We filter list of hash to remove all duplicates
-    hash_values = list(dict.fromkeys(hash_values))
+    hash_values = list(set(hash_values))
     # We filter list of url to remove all None values
     url_values = list(filter(None, url_values))
     # We filter list of url to remove all duplicates
-    url_values = list(dict.fromkeys(url_values))
+    url_values = list(set(url_values))
     time1 = datetime.now()
     try:
         case_number = case_id
         case_str = case_number.zfill(6)
-        print("Begining case : #"+case_str+" ...\n")
+        logging.info(f"Begining case : #{case_str} ...\n")
     except:
-        print("No case Id given, defaulting to 0 ,use the --case_id argument \n")
+        logging.info("No case Id given, defaulting to 0 ,use the --case_id argument \n")
         case_number = str(0)
         case_str = case_number.zfill(6)
-    
+
     if ip_values:
-        print("Starting IP Analysis...")
+        logging.info("Starting IP Analysis...")
         output_ip_reports(ip_values, client, ip_dupes, case_number)
-        print("IP Analysis ended successfully")
+        logging.info("IP Analysis ended successfully")
     else:
-        print("No IPs to analyze.")
+        logging.info("No IPs to analyze.")
     if hash_values:
-        print("Starting Hash Analysis...")
+        logging.info("Starting Hash Analysis...")
         output_hash_reports(hash_values, client, hash_dupes, case_number)
-        print("Hash Analysis ended successfully")
+        logging.info("Hash Analysis ended successfully")
     else:
-        print("No hashes to analyze.")
+        logging.info("No hashes to analyze.")
     if url_values:
-        print("Starting URL Analysis...")
+        logging.info("Starting URL Analysis...")
         output_url_reports(url_values, client, url_dupes, case_number)
-        print("Url Analysis ended successfully")
+        logging.info("Url Analysis ended successfully")
     else:
-        print("No URLs to analyze.")
+        logging.info("No URLs to analyze.")
     time2 = datetime.now()
     total = time2 - time1
-    print("Analysis done in "+ str(total) +" !")
-    print( "Thank you for using VT Tools ! ")
-    mispchoice(case_str,csvfilescreated)
+    logging.info(f"Analysis done in {total} !")
+    logging.info("Thank you for using VT Tools ! ")
+    mispchoice(case_str, csvfilescreated)
     for csvfile in csvfilescreated:
-        print("CSV file created : "+csvfile)
+        logging.info(f"CSV file created : {csvfile}")
+
+
+
+        
 if __name__ == '__main__':
     a = """
 
