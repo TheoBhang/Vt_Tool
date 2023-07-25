@@ -3,13 +3,10 @@
 import csv
 import logging
 import os
-from datetime import datetime
-from urllib.parse import urlsplit
 import pymisp
-import re
 import urllib3
 urllib3.disable_warnings()
-
+logging.getLogger("Python").setLevel(logging.CRITICAL)
 
 def get_misp_event(misp, case_str):
     '''
@@ -19,28 +16,13 @@ def get_misp_event(misp, case_str):
     :param case_str: The case string to use in the MISP event title
     '''
     # Search for existing event with the given case string
-    events = misp.search_index(case_str)
-    for event in events:
-        if event.info == f"Vt Tools Report - Case: {case_str}":
-            return event
-
-    # Create new event if none found
-    event = pymisp.MISPEvent()
-    event.distribution = 0  # Set distribution to "Your organization only"
-    event.threat_level_id = 2  # Set threat level to "High"
-    event.analysis = 2  # Set analysis level to "Initial"
-    event.info = f"Vt Tools Report - Case: {case_str} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-
-    try:
-        event = misp.add_event(event, pythonify=True)
-        return event
-    except Exception as e:
-        logging.error(f"Failed to create MISP event: {e}")
-        return None
-
-
-
-
+    if case_str:
+        event = misp.get_event(case_str)
+    else:
+        event = misp.new_event(info="VirusTotal Report")
+    misp_event = pymisp.MISPEvent()
+    misp_event.load(event)
+    return misp_event
 
 def main(misp, case_str, csvfilescreated):
     '''
@@ -51,7 +33,7 @@ def main(misp, case_str, csvfilescreated):
     :param csvfilescreated: A list of CSV files to read data from
     '''
     misp_event = get_misp_event(misp, case_str)
-
+    print(f"Using MISP event {misp_event.id} for submission")
     for csvfile in csvfilescreated:
         with open(csvfile, newline='') as f:
             csv_reader = csv.reader(f, delimiter=";")
@@ -104,8 +86,29 @@ def main(misp, case_str, csvfilescreated):
                     }
                 if object_name:
                     misp_object = pymisp.MISPObject(name=object_name)
-                    for attr_name, attr_value in attributes.items():
-                        misp_object.add_attribute(attr_name, value=attr_value)
+                    if attributes:
+                        for attr_name, attr_value in attributes.items():
+                            if attr_name == "ip-src":
+                                misp_object.add_attribute(attr_name, value=attr_value, type="ip-src")
+                            elif attr_name == "url":
+                                misp_object.add_attribute(attr_name, value=attr_value, type="url")
+                            elif attr_name == "sha256":
+                                misp_object.add_attribute(attr_name, value=attr_value, type="sha256")
+                            elif attr_name == "md5":
+                                misp_object.add_attribute(attr_name, value=attr_value, type="md5")
+                            elif attr_name == "sha1":
+                                misp_object.add_attribute(attr_name, value=attr_value, type="sha1")
+                            elif attr_name == "ssdeep":
+                                misp_object.add_attribute(attr_name, value=attr_value, type="ssdeep")
+                            elif attr_name == "tlsh":
+                                if attr_value != "No tlsh Found":
+                                    misp_object.add_attribute(attr_name, value=attr_value, type="tlsh")
+                            elif attr_name == "link":
+                                misp_object.add_attribute(attr_name, value=attr_value, type="link")
+                            elif attr_name == "size":
+                                misp_object.add_attribute(attr_name, value=attr_value, type="size-in-bytes")
+                            else:
+                                misp_object.add_attribute(attr_name, value=attr_value, type="text")
 
                     try:
                         r = misp.add_object(misp_event, misp_object)
@@ -126,16 +129,11 @@ def submit_to_misp(misp, misp_event, misp_objects):
     # Add MISP objects to the event
     for misp_object in misp_objects:
         misp.add_object(misp_event.id, misp_object)
-
-    # Add object references for each object
-    for misp_object in misp_objects:
-        for reference in misp_object.ObjectReference:
-            referenced_object = misp.get_object(reference.referenced_uuid)
-            if referenced_object:
-                misp.add_object_reference(misp_object.uuid, referenced_object.uuid)
-
     # Update the event
-    misp.update(misp_event)
+    try:
+        misp.update_event(misp_event)
+    except:
+        pass
             
 
 def misp_event(case_str, csvfilescreated):
@@ -152,6 +150,8 @@ def misp_event(case_str, csvfilescreated):
 
         # Start checking VT and converting the reports
         main(misp, case_str, csvfilescreated)
+
+
     except KeyboardInterrupt:
         print("Exiting...")
     except pymisp.exceptions.InvalidMISPObject as err:

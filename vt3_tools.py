@@ -573,6 +573,9 @@ def analyze_values(values: List[str], input_file: str, case_id: int, api_key: st
     values = list(values)
     values.extend(process_file_values(file_values))
     values.extend(read_from_stdin())
+    if not values:
+        logging.info("No values to analyze.")
+        exit()
     ip_values = [v for v in values if Pattern.pattern_IP.match(v)]
     hash_values = [v for v in values if re.match(r'[a-fA-F0-9]{64}', v)]
     url_values = [v for v in values if Pattern.pattern_URL.match(v)]
@@ -623,7 +626,8 @@ def analyze_values(values: List[str], input_file: str, case_id: int, api_key: st
     total = time2 - time1
     logging.info(f"Analysis done in {total} !")
     logging.info("Thank you for using VT Tools ! ")
-    mispchoice(case_str, csvfilescreated)
+    client.close()
+    mispchoice(case_id, csvfilescreated)
     for csvfile in csvfilescreated:
         logging.info(f"CSV file created : {csvfile}")
 
