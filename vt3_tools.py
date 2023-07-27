@@ -446,7 +446,7 @@ def output_hash_reports(hash_values, client, hash_dupes, case_num):
 
 
 
-def output_url_reports(url_values: List[str], client, url_dupes: List[str], case_num: str) -> None:
+def output_url_reports(url_values: List[str], client, url_dupes: List[str], case_num) -> None:
     """Print reports to stdout and write them to a file"""
     table = PrettyTable()
     case_id = case_num
