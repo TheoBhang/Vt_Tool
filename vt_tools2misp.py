@@ -2,10 +2,15 @@
 # Revisited view of the https://github.com/MISP/PyMISP/blob/main/examples/vt_to_misp.py script
 import csv
 import logging
+import warnings
 import os
 import pymisp
 import urllib3
 urllib3.disable_warnings()
+
+# Disable warnings from the VirusTotal API
+warnings.filterwarnings("ignore")
+
 logging.getLogger("Python").setLevel(logging.CRITICAL)
 
 def get_misp_event(misp, case_str):
@@ -110,11 +115,11 @@ def main(misp, case_str, csvfilescreated):
                             else:
                                 misp_object.add_attribute(attr_name, value=attr_value, type="text")
 
-                    try:
-                        r = misp.add_object(misp_event, misp_object)
-                        submit_to_misp(misp, misp_event, r)
-                    except Exception as e:
-                        print(f"Failed to submit MISP object: {e}")
+                        try:
+                            r = misp.add_object(misp_event, misp_object)
+                            submit_to_misp(misp, misp_event, r)
+                        except Exception as e:
+                            print(f"Failed to submit MISP object: {e}")
 
 def submit_to_misp(misp, misp_event, misp_objects):
     '''
