@@ -12,6 +12,7 @@ urllib3.disable_warnings()
 warnings.filterwarnings("ignore")
 
 logging.getLogger("Python").setLevel(logging.CRITICAL)
+logging.getLogger().setLevel(logging.CRITICAL)
 
 def get_misp_event(misp, case_str):
     '''
