@@ -92,7 +92,9 @@ def main(misp, case_str, csvfilescreated):
                     }
                 if object_name:
                     misp_object = pymisp.MISPObject(name=object_name)
+                    print(f"Adding {object_name} to MISP event")
                     if attributes:
+                        print(attributes)
                         for attr_name, attr_value in attributes.items():
                             if attr_name == "ip-src":
                                 misp_object.add_attribute(attr_name, value=attr_value, type="ip-src")
