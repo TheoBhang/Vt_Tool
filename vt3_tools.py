@@ -109,7 +109,7 @@ def analyze_values(args):
             strtable = table.create_table()
 
             total_csv_report = [result["csv_report"] for result in value_results]
-            init.output.output_to_csv(total_csv_report[0], "HASH" if value_type == "hashes" else value_type[:-1].upper())
+            init.output.output_to_csv(total_csv_report, "HASH" if value_type == "hashes" else value_type[:-1].upper())
 
             # Output the results to a TXT file
             init.output.output_to_txt(strtable, "HASH" if value_type == "hashes" else value_type[:-1].upper())

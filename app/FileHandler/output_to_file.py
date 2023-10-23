@@ -67,19 +67,18 @@ class OutputHandler:
         None
         """
         file_path = self._get_file_path(value_type)
-
         # Write the contents of the table to a file in CSV format
         with open(file_path, 'w', newline='') as data_file:
             # Create the CSV writer object
             csv_writer = csv.DictWriter(
-                data_file, fieldnames=data[0].keys(), delimiter=';')
+                data_file, fieldnames=data[0][0].keys(), delimiter=';')
 
             # Write the header row
             csv_writer.writeheader()
-
-            # Write the data rows
-            for obj in data:
-                csv_writer.writerow(obj)
+            for i in range(len(data)):
+                # Write the data rows
+                for obj in data[i]:
+                    csv_writer.writerow(obj)
 
         #print(f"\nResults successfully printed in:\n\t{file_path}\n")
 
