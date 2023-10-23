@@ -51,13 +51,11 @@ class ValueReader:
 
     def __init__(self, fname, values):
         self.fname = fname
-        if values is None:
-            self.values = defaultdict(list)
-        else:
-            self.values = values
+        self.values = values
+        self.dictValuesFile = defaultdict(list)
         self.dictValues = defaultdict(list)
 
-    def sort_values(self,value):
+    def sort_values(self,value,is_file):
         """
         Extract values from a string.
 
@@ -79,18 +77,23 @@ class ValueReader:
         domains = Pattern.pattern_Domain.findall(value)
         # Extract API keys
         keys = Pattern.pattern_API.findall(value)
-
+        standardDict = defaultdict(list)
         # Add extracted values to the dictionary
-        self.dictValues['ips'].extend(ips)
-        self.dictValues['urls'].extend(urls)
-        self.dictValues['hashes'].extend(hashes)
+        standardDict['ips'].extend(ips)
+        standardDict['urls'].extend(urls)
+        standardDict['hashes'].extend(hashes)
         for domain in domains:
             #if domain does not match a filename
             if not Pattern.pattern_Filename.match(domain.lower()) and "www" not in domain.lower():
-                self.dictValues['domains'].append(domain)
-        self.dictValues['keys'].extend(keys)
-
-        return self.dictValues
+                standardDict['domains'].append(domain)
+        standardDict['keys'].extend(keys)
+        if is_file:
+            self.dictValuesFile = standardDict
+            return self.dictValuesFile
+        else:
+            self.dictValues = standardDict
+            return self.dictValues
+        
 
     def read_from_stdin(self):
         """
@@ -109,6 +112,7 @@ class ValueReader:
         else:
             # If standard input is open, read lines and return them as a list
             for line in sys.stdin:
+                print(line.strip())
                 self.sort_values(line)
             return self.dictValues
 
@@ -124,10 +128,10 @@ class ValueReader:
             if self.fname is not None:  # Only proceed if there is a file name
                 with open(self.fname, encoding="utf8") as f:  # Open file
                     for line in f:  # Iterate through each line in the file
-                        self.sort_values(line)  # Extract values from the line
+                        self.sort_values(line,is_file=True)  # Extract values from the line
                 # Print success message
                 print(f"Successfully read values from {self.fname}")
-                return self.dictValues
+                return self.dictValuesFile
             
             else:
                 # Print error message if no file name is provided
@@ -146,14 +150,17 @@ class ValueReader:
             corresponding to these keys are lists of extracted values from the user.
         """
         # Read values from standard input
-        values = self.read_from_stdin()
+        values = self.read_from_stdin()  or defaultdict(list)
+        for value in self.values:
+            self.sort_values(value,is_file=None)
+        inputValues = self.dictValues
         # Read values from file
-        file_values = self.read_from_file()
+        file_values = self.read_from_file() or defaultdict(list)
 
         # Combine values and file_values
         combined_values = defaultdict(list)
         for key in values.keys():
-            combined_values[key] = values[key] + file_values[key]
+            combined_values[key] = values[key] + inputValues[key] + file_values[key]
 
         # Remove duplicates and None values
         for key in combined_values.keys():
