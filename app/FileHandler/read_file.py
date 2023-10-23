@@ -55,18 +55,25 @@ class ValueReader:
         self.dictValuesFile = defaultdict(list)
         self.dictValues = defaultdict(list)
 
-    def sort_values(self,value,is_file):
+    def sort_values(self, value, is_file):
         """
         Extract values from a string.
 
         Parameters:
         value (str): The string to extract values from.
+        is_file (bool): Whether the input is a file or not.
 
         Returns:
         dict: A dictionary with four keys: 'ips', 'urls', 'hashes', and 'keys'. The values
               corresponding to these keys are lists of extracted values from the string.
 
         """
+        # Create a dictionary to store the extracted values
+        if is_file:
+            values_dict = self.dictValuesFile
+        else:
+            values_dict = self.dictValues
+
         # Extract IP addresses
         ips = Pattern.pattern_IP.findall(value)
         # Extract URLs
@@ -77,21 +84,23 @@ class ValueReader:
         domains = Pattern.pattern_Domain.findall(value)
         # Extract API keys
         keys = Pattern.pattern_API.findall(value)
-        standardDict = defaultdict(list)
+
         # Add extracted values to the dictionary
-        standardDict['ips'].extend(ips)
-        standardDict['urls'].extend(urls)
-        standardDict['hashes'].extend(hashes)
+        values_dict['ips'].extend(ips)
+        values_dict['urls'].extend(urls)
+        values_dict['hashes'].extend(hashes)
         for domain in domains:
             #if domain does not match a filename
             if not Pattern.pattern_Filename.match(domain.lower()) and "www" not in domain.lower():
-                standardDict['domains'].append(domain)
-        standardDict['keys'].extend(keys)
+                values_dict['domains'].append(domain)
+        values_dict['keys'].extend(keys)
+
+        # Add extracted values to the appropriate dictionary based on whether the input is a file or not
         if is_file:
-            self.dictValuesFile = standardDict
+            self.dictValuesFile.update(values_dict)
             return self.dictValuesFile
         else:
-            self.dictValues = standardDict
+            self.dictValues.update(values_dict)
             return self.dictValues
         
 
@@ -112,7 +121,6 @@ class ValueReader:
         else:
             # If standard input is open, read lines and return them as a list
             for line in sys.stdin:
-                print(line.strip())
                 self.sort_values(line)
             return self.dictValues
 
@@ -150,12 +158,17 @@ class ValueReader:
             corresponding to these keys are lists of extracted values from the user.
         """
         # Read values from standard input
-        values = self.read_from_stdin()  or defaultdict(list)
+
+        values = self.read_from_stdin() 
+        if values is None:
+            values = {"ips": [], "urls": [], "hashes": [], "keys": [], "domains": []}
         for value in self.values:
             self.sort_values(value,is_file=None)
         inputValues = self.dictValues
         # Read values from file
-        file_values = self.read_from_file() or defaultdict(list)
+        file_values = self.read_from_file()
+        if file_values is None:
+            file_values = {"ips": [], "urls": [], "hashes": [], "keys": [], "domains": []}
 
         # Combine values and file_values
         combined_values = defaultdict(list)
