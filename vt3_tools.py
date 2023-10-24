@@ -91,7 +91,6 @@ def analyze_values(args):
                     logging.warning(f"Invalid {value_type[:-1]}: {value}\n")
             except Exception as e:
                 logging.warning(f"Error retrieving report for {value_type[:-1]}: {value}\n{e}")
-
         # Filter out invalid values
         value_results = [result for result in value_results if result]
 
