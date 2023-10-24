@@ -78,9 +78,10 @@ def analyze_values(args):
                     value_type_str = init.validator.validate_hash(value)
                 else:
                     validator_func = getattr(init.validator, f"validate_{value_type[:-1]}")
+                    
                     value_type_str = validator_func(value)
                 if value_type_str:
-                    if value_type_str in ["Private", "Localhost", "Everybody"]:
+                    if value_type_str in ["Private IPv4", "Loopback IPv4", "Unspecified IPv4", "Link-local IPv4", "Reserved IPv4", "MD5","SHA-1","SHA-224","SHA-384","SHA-512", "SSDEEP"]:
                         continue
                     else:
                         try:
@@ -88,9 +89,9 @@ def analyze_values(args):
                         except Exception as e:
                             print(f"Error retrieving report for {value_type[:-1]}: {value}\n{e}")
                 else:
-                    logging.warning(f"Invalid {value_type[:-1]}: {value}\n")
+                    print(f"Invalid {value_type[:-1]}: {value}\n")
             except Exception as e:
-                logging.warning(f"Error retrieving report for {value_type[:-1]}: {value}\n{e}")
+                print(f"Error retrieving report for {value_type[:-1]}: {value}\n{e}")
         # Filter out invalid values
         value_results = [result for result in value_results if result]
 

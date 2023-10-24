@@ -18,13 +18,13 @@ class VTReporter:
         dict: The report for the value.
         """
         # Create a report for the value
-        if value_type == "IP":
+        if value_type == "PUBLIC IPV4":
             report = self.vt.get_object(f"/ip_addresses/{value}")
         elif value_type == "DOMAIN":
             report = self.vt.get_object(f"/domains/{value}")
         elif value_type == "URL":
             report = self.vt.get_object(f"/urls/{url_id(value)}")
-        elif value_type == "HASH":
+        elif value_type == "SHA-256":
             report = self.vt.get_object(f"/files/{value}")
 
         return report
@@ -49,7 +49,7 @@ class VTReporter:
         malicious_score = f"{malicious} \\ {malicious + undetected + suspicious + harmless}"
         suspi_score = f"{suspicious} \\ {malicious + undetected + suspicious + harmless}"
         safe_score = f"{harmless} \\ {malicious + undetected + suspicious + harmless}"
-        if value_type == "IP":
+        if value_type == "PUBLIC IPV4":
             object = {
                 "IP Address" : value,
                 "malicious_score": malicious_score,
@@ -101,7 +101,7 @@ class VTReporter:
                 },
                 "link": f"https://www.virustotal.com/gui/url/{report.id}"
             }
-        elif value_type == "HASH":
+        elif value_type == "SHA-256":
             object = {
                 "Hash (Sha256)": value,
                 "malicious_score": malicious_score,

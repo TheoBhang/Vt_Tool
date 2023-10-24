@@ -19,11 +19,12 @@ class Pattern:
     pattern_Hash = re.compile(r'\b([a-fA-F0-9]{64})\b')
 
     # Regular expression pattern to match domain names
-    pattern_Domain = re.compile(r'(?:[-a-zA-Z0-9@%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b)(?:[-a-zA-Z0-9()@%_\+.~#?&//=]*)')
+    pattern_Domain = re.compile(r'(?:[-a-zA-Z0-9%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b)(?:[-a-zA-Z0-9()%_\+.~#?&=]*)')
 
     # Regular expression pattern to match filenames
-    pattern_Filename = re.compile(r"\b(\w+)[-]?(\w+)?[-]?(\w+)?\.(7z|accdb|accde|activedirectory|adoc|ai|asciidoc|automatic|avi|awk|bat|bmp|bz2|c|class|cfg|cnf|coffee|conf|cpp|csv|dart|db|dbf|dit|dll|doc|docm|docx|dotm|dotx|eps|env|exe|fish|gif|go|graphql|graphqls|gql|gqls|gz|html|htm|hpp|ini|inf|iso|jar|java|jpeg|jpg|js|json|less|log|lua|markdown|md|mde|mkv|mov|mp3|mp4|odg|odp|ods|odt|ogv|one|onepkg|onetmp|onetoc|onetoc2|odc|odf|odft|odg|odi|odm|odp|ods|odt|ogg|ogv|old|one|onepkg|onetmp|onetoc|onetoc2|otg|otp|ots|ott|pdf|php|pl|png|potm|potx|ppam|ppsm|ppt|pptm|pptx|ps1|psd1|psm1|psd|pub|py|rar|rb|reg|rst|rs|rtf|rvices|.rvices|sass|scss|sed|sh|sldm|sql|stealthbits|svg|swift|sys|tar|tex|thmx|tif|tiff|toml|ts|tsx|ttf|txt|um|vb|vbs|vcd|vsdx|vssx|vstx|wav|webm|wmv|woff|woff2|xls|xlsx|xlsm|xltm|xml|xps|yaml|yml|zip)\b")
+    pattern_Filename = re.compile(r"\b(\w+)[-]?(\w+)?[-]?(\w+)?\.(7z|accdb|accde|activedirectory|adoc|ai|asciidoc|automatic|avi|awk|bat|bmp|bz2|c|class|cfg|cnf|coffee|conf|cpp|csv|dart|db|dbf|dit|dll|doc|docm|docx|dotm|dotx|eps|env|exe|fish|gif|go|graphql|graphqls|gql|gqls|gz|html|htm|hpp|ini|inf|iso|jar|java|jpeg|jpg|js|json|less|log|lua|markdown|md|mde|mkv|mov|mp3|mp4|odg|odp|ods|odt|ogv|one|onepkg|onetmp|onetoc|onetoc2|odc|odf|odft|odg|odi|odm|odp|ods|odt|ogg|ogv|old|one|onepkg|onetmp|onetoc|onetoc2|otg|otp|ots|ott|pdf|php|pl|png|potm|potx|ppam|ppsm|ppt|pptm|pptx|ps1|psd1|psm1|psd|pub|py|q2k|rar|rb|reg|rst|rs|rtf|rvices|.rvices|sass|scss|sed|sh|sldm|sql|stealthbits|svg|swift|sys|tar|tex|thmx|tif|tiff|toml|ts|tsx|ttf|txt|um|vb|vbs|vcd|vsdx|vssx|vstx|wav|webm|wmv|woff|woff2|xls|xlsx|xlsm|xltm|xml|xps|yaml|yml|zip)\b")
 
+    pattern_Remove = re.compile(r'(?:[0-9.]{1,256}\.[0-9]{1,6}\b)(?:[0-9]*)')
     # Regular expression pattern to match API keys that are alphanumeric and have a length of 32 characters or more
     pattern_API = re.compile(r'[a-zA-Z\d]{32}$')
 
@@ -93,7 +94,7 @@ class ValueReader:
             #if domain does not match a filename
             if "www" in domain:
                 domain.replace("www.","")
-            if not Pattern.pattern_Filename.match(domain.lower()) and "www" not in domain.lower():
+            if not Pattern.pattern_Filename.match(domain.lower()) and "www" not in domain.lower() and not Pattern.pattern_IP.match(domain) and not Pattern.pattern_Remove.match(domain):
                 values_dict['domains'].append(domain)
         values_dict['keys'].extend(keys)
         # Add extracted values to the appropriate dictionary based on whether the input is a file or not

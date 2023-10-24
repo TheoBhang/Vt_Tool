@@ -51,8 +51,8 @@ def get_proxy(proxy: str) -> str:
     """
     if proxy:
         return proxy
-    elif os.getenv("VT_PROXY"):
-        return os.getenv("VT_PROXY")
+    elif os.getenv("PROXY"):
+        return os.getenv("PROXY")
     else:
         print("No Proxy provided.")
         return None
