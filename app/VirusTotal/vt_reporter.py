@@ -51,7 +51,6 @@ class VTReporter:
                     report = "Not found"
                 else:
                     raise e
-        print(report)
         return report
 
     def create_object(self, value_type, value, report):
