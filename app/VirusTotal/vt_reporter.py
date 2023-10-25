@@ -21,24 +21,37 @@ class VTReporter:
         if value_type == "PUBLIC IPV4":
             try:
                 report = self.vt.get_object(f"/ip_addresses/{value}")
-            except:
-                report = "Not found"
+            # except only notfound error
+            except Exception as e:
+                if "NotFoundError" in str(e):
+                    report = "Not found"
+                else:
+                    raise e
         elif value_type == "DOMAIN":
             try:
                 report = self.vt.get_object(f"/domains/{value}")
-            except:
-                report = "Not found"
+            except Exception as e:
+                if "NotFoundError" in str(e):
+                    report = "Not found"
+                else:
+                    raise e
         elif value_type == "URL":
             try:
                 report = self.vt.get_object(f"/urls/{url_id(value)}")
-            except: 
-                report = "Not found"
+            except Exception as e:
+                if "NotFoundError" in str(e):
+                    report = "Not found"
+                else:
+                    raise e
         elif value_type == "SHA-256":
             try:
                 report = self.vt.get_object(f"/files/{value}")
-            except:
-                report = "Not found"
-
+            except Exception as e:
+                if "NotFoundError" in str(e):
+                    report = "Not found"
+                else:
+                    raise e
+        print(report)
         return report
 
     def create_object(self, value_type, value, report):
@@ -176,7 +189,7 @@ class VTReporter:
                     "safe_score" : "Not found",
                     "title": getattr(report, 'title', 'No Title Found'),
                     "final_Url": getattr(report, 'last_final_url', 'No endpoints'),
-                    "first_scan": str(utc2local(getattr(report, 'first_submission_date', 'No date Found'))),
+                    "first_scan": 'No date Found',
                     "info": {
                         'metadatas': getattr(report, 'html_meta', 'No metadata Found'),
                         'targeted': getattr(report, 'targeted_brand', 'No target brand Found'),
@@ -240,7 +253,6 @@ class VTReporter:
                 ["VirusTotal Total Votes", "Not found"]
             ]
             rows.extend(standard_rows)
-
             return rows
 
     def csv_report(self, value_type, value, report):
