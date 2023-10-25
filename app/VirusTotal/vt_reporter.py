@@ -154,11 +154,11 @@ class VTReporter:
                     "safe_score":  "Not found",
                     "owner": "Not found",
                     "location": "Not found",
-                    "network": getattr(report, 'network', 'No network found'),
-                    "https_certificate": getattr(report, 'last_https_certificate', 'No https certificate found'),
+                    "network": 'No network found',
+                    "https_certificate": 'No https certificate found',
                     "info-ip": {
-                        "regional_internet_registry": getattr(report, 'regional_internet_registry', 'No regional internet registry found'),
-                        "asn": getattr(report, 'asn', 'No asn found'),
+                        "regional_internet_registry": 'No regional internet registry found',
+                        "asn": 'No asn found',
                     },
                     "link": "No link"
                 }
@@ -168,15 +168,15 @@ class VTReporter:
                     "malicious_score": "Not found",
                     "suspicious_score": "Not found",
                     "safe_score": "Not found",
-                    'creation_date': getattr(report, 'creation_date', 'No creation date found'),
-                    "reputation": getattr(report, 'reputation', 'No reputation found'),
-                    "whois": getattr(report, 'whois', 'No whois found'),
+                    'creation_date': 'No creation date found',
+                    "reputation": 'No reputation found',
+                    "whois": 'No whois found',
                     "info": {
-                        'last_analysis_results': getattr(report, 'last_analysis_results', 'No analysis results found'),
-                        'last_analysis_stats': getattr(report, 'last_analysis_stats', 'No analysis stats found'),
-                        'last_dns_records': getattr(report, 'last_dns_records', 'No dns records found'),
-                        'last_https_certificate': getattr(report, 'last_https_certificate', 'No https certificate found'),
-                        'registrar': getattr(report, 'registrar', 'No registrar found'),
+                        'last_analysis_results': 'No analysis results found',
+                        'last_analysis_stats': 'No analysis stats found',
+                        'last_dns_records': 'No dns records found',
+                        'last_https_certificate': 'No https certificate found',
+                        'registrar': 'No registrar found',
                     },
                     "link": "No link"
                 }
@@ -186,17 +186,17 @@ class VTReporter:
                     "malicious_score": "Not found",
                     "suspicious_score": "Not found",
                     "safe_score" : "Not found",
-                    "title": getattr(report, 'title', 'No Title Found'),
-                    "final_Url": getattr(report, 'last_final_url', 'No endpoints'),
+                    "title": 'No Title Found',
+                    "final_Url": 'No endpoints',
                     "first_scan": 'No date Found',
                     "info": {
-                        'metadatas': getattr(report, 'html_meta', 'No metadata Found'),
-                        'targeted': getattr(report, 'targeted_brand', 'No target brand Found'),
-                        'links': getattr(report, 'outgoing_links', 'No links in url'),
-                        'redirection_chain': getattr(report, 'redirection_chain', 'No redirection chain Found'),
-                        'trackers': getattr(report, 'trackers', 'No tracker Found'),
+                        'metadatas': 'No metadata Found',
+                        'targeted': 'No target brand Found',
+                        'links': 'No links in url',
+                        'redirection_chain': 'No redirection chain Found',
+                        'trackers': 'No tracker Found',
                     },
-                    "link": f"No link"
+                    "link": "No link"
                 }
             elif value_type == "SHA-256":
                 object = {
@@ -204,15 +204,15 @@ class VTReporter:
                     "malicious_score": "Not found",
                     "suspicious_score": "Not found",
                     "safe_score": "Not found",
-                    "extension": getattr(report, 'type_extension', 'No extension found'),
-                    "Size (Bytes)": getattr(report, 'size', 'No size found'),
-                    "md5": getattr(report, 'md5', 'No md5 found'),
-                    "sha1": getattr(report, 'sha1', 'No sha1 found'),
-                    "ssdeep": getattr(report, 'ssdeep', 'No ssdeep found'),
-                    "tlsh": getattr(report, 'tlsh', 'No tlsh found'),
-                    "names": ", ".join(getattr(report, 'names', 'No names found')),
-                    "Type": report.trid[0]["file_type"] if hasattr(report, 'trid') else "No filetype Found",
-                    "Type Probability": report.trid[0]["probability"] if hasattr(report, 'trid') else "No type probabilty",
+                    "extension": 'No extension found',
+                    "Size (Bytes)": 'No size found',
+                    "md5": 'No md5 found',
+                    "sha1": 'No sha1 found',
+                    "ssdeep": 'No ssdeep found',
+                    "tlsh": 'No tlsh found',
+                    "names": 'No names found',
+                    "Type": "No filetype Found",
+                    "Type Probability": "No type probabilty",
                     "link": "No link"
                 }
 
