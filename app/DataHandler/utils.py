@@ -56,3 +56,36 @@ def get_proxy(proxy: str) -> str:
     else:
         print("No Proxy provided.")
         return None
+    
+def get_user_choice():
+    """
+    Get the user's choice.
+
+    Returns:
+    str: The user's choice.
+    """
+    # Get the user's choice
+    choice = input("Do you want to analyse a particular type ? (y/n) : ")
+
+    if choice == "y" or choice == "Y":
+        choice = input("Which type do you want to analyse ? \n\td = Domain\n\th = Hash\n\ti = Ip\n\tu = Url\nYour choice : ")
+        if choice == "ip" or choice == "i" or choice == "IP" or choice == "I":
+            value_type = "ips"
+        elif choice == "domain" or choice == "d" or choice == "DOMAIN" or choice == "D":
+            value_type = "domains"
+        elif choice == "url" or choice == "u" or choice == "URL" or choice == "U":
+            value_type = "urls"
+        elif choice == "hash" or choice == "h" or choice == "HASH" or choice == "H":
+            value_type = "hashes"
+        else:
+            print("Invalid choice.")
+            print("Defaulting to all types.")
+            value_type = None
+    elif choice == "n" or choice == "N":
+        value_type = None
+    else:
+        print("Invalid choice.")
+        print("Defaulting to all types.")
+        value_type = None
+    
+    return value_type

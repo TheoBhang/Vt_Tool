@@ -37,17 +37,22 @@ from app.MISP.vt_tools2misp import mispchoice # for interacting with MISP
 from init import Initializator # for initializing the script
 from app.FileHandler.create_table import PrettyTable # for creating tables
 from app.FileHandler.read_file import ValueReader # for reading values from a file
-from app.DataHandler.utils import get_api_key, get_proxy # for interacting with the operating system
+from app.DataHandler.utils import get_api_key, get_proxy, get_user_choice # for interacting with the operating system
         
 
 
-def analyze_values(args):
+def analyze_values(args, types):
     """
     Analyze values.
 
     Parameters:
     args (Namespace): The arguments passed to the script.
     """
+    table_values = []
+    if types:
+        table_values.append(types)
+    else:
+        table_values = ["ips", "domains", "urls", "hashes"]
     load_dotenv()
     api_key = get_api_key(args.api_key, args.api_key_file)
     proxy = get_proxy(args.proxy)
@@ -65,7 +70,7 @@ def analyze_values(args):
 
     # Analyze each value type
     results = {}
-    for value_type in ["ips", "domains", "urls", "hashes"]:
+    for value_type in table_values:
         if not values[value_type]:
             print(f"No {value_type} to analyze.\n")
             continue
@@ -197,6 +202,8 @@ JY7.         ~YJY^                 :!JYJJJ^...~JJ^
     parser.add_argument("values", type=str, nargs="*", help="The values to analyze. Can be IP addresses, hashes, URLs, or domains.")
     args = parser.parse_args()
 
-    analyze_values(args)
+    value_type = get_user_choice()
+
+    analyze_values(args, value_type)
 
             
