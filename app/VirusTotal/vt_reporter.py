@@ -247,7 +247,10 @@ class VTReporter:
             return rows
         else:
             rows = [[key, value] for key, value in object.items()]
-
+            try:
+                object.pop("info")
+            except:
+                pass
             standard_rows = [
                 ["VirusTotal Total Votes", "Not found"]
             ]
