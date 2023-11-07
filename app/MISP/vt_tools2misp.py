@@ -53,42 +53,51 @@ def main(misp, case_str, csvfilescreated):
                 object_name = None
                 attributes = {}
 
-                if "Hashes" in csvfile:
+                if "Hash" in csvfile:
                     object_name = "file"
                     attributes = {
-                        "sha256": line[0],
-                        "md5": line[7],
-                        "size":line[6],
-                        "sha1": line[8],
-                        "ssdeep": line[9],
-                        "tlsh": line[10],
-                        "filename": line[11],
-                        "vt-score": line[1],
-                        "text": line[12],
-                        "link": line[13]
+                        "sha256": getattr(line, "Hash (Sha256)", None),
+                        "md5": getattr(line, "md5", None),
+                        "size": getattr(line, "Size (Bytes)", None),
+                        "sha1": getattr(line, "sha1", None),
+                        "ssdeep": getattr(line, "ssdeep", None),
+                        "tlsh": getattr(line, "tlsh", None),
+                        "filename": getattr(line, "filename", None),
+                        "vt-score": getattr(line, "malicious_score", None),
+                        "text": getattr(line, "Type", None),
+                        "link": getattr(line, "link", None)
                     }
                 elif "URL" in csvfile:
                     object_name = "url"
                     attributes = {
-                        "url": line[0],
-                        "vt-score": line[1],
-                        "metadatas": line[4],
-                        "targeted": line[5],
-                        "text": line[6],
-                        "trackers": line[7],
-                        "link": line[8]
+                        "url": getattr(line, "URL", None),
+                        "vt-score": getattr(line, "malicious_score", None),
+                        "metadatas": getattr(line, "metadatas", None),
+                        "targeted": getattr(line, "targeted", None),
+                        "text": getattr(line, "final_Url", None),
+                        "trackers": getattr(line, "trackers", None),
+                        "link": getattr(line, "link", None)
                     }
                 elif "IP" in csvfile:
                     object_name = "domain-ip"
                     attributes = {
-                        "ip-src": line[0],
-                        "vt-score": line[1],
-                        "owner": line[4],
-                        "location": line[5],
-                        "network": line[6],
-                        "text": line[7],
-                        "certificate": line[8],
-                        "link": line[9]
+                        "ip-src": getattr(line, "IP", None),
+                        "vt-score": getattr(line, "malicious_score", None),
+                        "owner": getattr(line, "owner", None),
+                        "location": getattr(line, "location", None),
+                        "network": getattr(line, "network", None),
+                        "text": getattr(line, "info_ip", None),
+                        "certificate": getattr(line, "https_certificate", None),
+                        "link": getattr(line, "link", None)
+                    }
+                elif "Domain" in csvfile:
+                    object_name = "domain"
+                    attributes = {
+                        "domain": getattr(line, "Domain", None),
+                        "vt-score": getattr(line, "malicious_score", None),
+                        "creation_date": getattr(line, "creation_date", None),
+                        "text": getattr(line, "whois", None),
+                        "link": getattr(line, "link", None)
                     }
                 if object_name:
                     misp_object = pymisp.MISPObject(name=object_name)
