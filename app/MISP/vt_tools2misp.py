@@ -1,6 +1,7 @@
 ''' Convert a VirusTotal report into MISP objects '''
 # Revisited view of the https://github.com/MISP/PyMISP/blob/main/examples/vt_to_misp.py script
 import csv
+from collections import defaultdict
 import logging
 import warnings
 import os
@@ -39,12 +40,15 @@ def main(misp, case_str, csvfilescreated):
     :param csvfilescreated: A list of CSV files to read data from
     '''
     misp_event = get_misp_event(misp, case_str)
+    columns = defaultdict(list) # each value in each column is appended to a list
     print(f"Using MISP event {misp_event.id} for submission")
     for csvfile in csvfilescreated:
         with open(csvfile, newline='') as f:
             csv_reader = csv.reader(f, delimiter=";")
-            counter = 0
+            counter = 0            
             for line in csv_reader:
+                for (k,v) in row.items(): # go over each column name and value 
+                    columns[k].append(v)
                 if not line:
                     continue
                 if counter == 0:
@@ -56,16 +60,16 @@ def main(misp, case_str, csvfilescreated):
                 if "Hash" in csvfile:
                     object_name = "file"
                     attributes = {
-                        "sha256": getattr(line, "Hash (Sha256)", None),
-                        "md5": getattr(line, "md5", None),
-                        "size": getattr(line, "Size (Bytes)", None),
-                        "sha1": getattr(line, "sha1", None),
-                        "ssdeep": getattr(line, "ssdeep", None),
-                        "tlsh": getattr(line, "tlsh", None),
-                        "filename": getattr(line, "filename", None),
-                        "vt-score": getattr(line, "malicious_score", None),
-                        "text": getattr(line, "Type", None),
-                        "link": getattr(line, "link", None)
+                        "sha256": columns["Hash (Sha256)"][counter],
+                        "md5": columns["md5"][counter],
+                        "size": columns["Size (Bytes)"][counter],
+                        "sha1": columns["sha1"][counter],
+                        "ssdeep": columns["ssdeep"][counter],
+                        "tlsh": columns["tlsh"][counter],
+                        "filename": columns["filename"][counter],
+                        "vt-score": columns["malicious_score"][counter],
+                        "text": columns["Type"][counter],
+                        "link": columns["link"][counter]
                     }
                 elif "URL" in csvfile:
                     object_name = "url"
@@ -103,7 +107,6 @@ def main(misp, case_str, csvfilescreated):
                     misp_object = pymisp.MISPObject(name=object_name)
                     print(f"Adding {object_name} to MISP event")
                     if attributes:
-                        print(attributes)
                         for attr_name, attr_value in attributes.items():
                             if attr_name == "ip-src":
                                 misp_object.add_attribute(attr_name, value=attr_value, type="ip-src")
