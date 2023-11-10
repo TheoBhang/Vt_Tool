@@ -60,6 +60,7 @@ def main(misp, case_str, csvfilescreated):
                 attributes = {}
 
                 if "Hash" in csvfile:
+                    print("test before attributes creation")
                     object_name = "file"
                     attributes = {
                         "sha256": columns["Hash (Sha256)"][counter],
@@ -73,7 +74,9 @@ def main(misp, case_str, csvfilescreated):
                         "text": columns["Type"][counter],
                         "link": columns["link"][counter]
                     }
+                    print("Listing attribute")
                     print(attributes)
+                    print("attributes created !")
                 elif "URL" in csvfile:
                     object_name = "url"
                     attributes = {
