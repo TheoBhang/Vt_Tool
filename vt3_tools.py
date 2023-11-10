@@ -118,7 +118,7 @@ def analyze_values(args, types):
 
             # Output the results to a TXT file
             init.output.output_to_txt(strtable, "HASH" if value_type == "hashes" else value_type[:-1].upper())
-            print(f"{value_type[:-1].upper()} Analysis ended successfully")
+            print(f"{"HASH" if value_type == "hashes" else value_type[:-1].upper()} Analysis ended successfully")
         else:
             print(f"No {value_type} to analyze.\n")
 
