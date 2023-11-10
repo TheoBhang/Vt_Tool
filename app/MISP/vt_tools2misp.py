@@ -45,10 +45,12 @@ def main(misp, case_str, csvfilescreated):
     for csvfile in csvfilescreated:
         with open(csvfile, newline='') as f:
             csv_reader = csv.reader(f, delimiter=";")
-            counter = 0            
-            for line in csv_reader:
+            readrows = csv.DictReader(f)
+            counter = 0
+            for row in readrows:
                 for (k,v) in row.items(): # go over each column name and value 
                     columns[k].append(v)
+            for line in csv_reader:
                 if not line:
                     continue
                 if counter == 0:
