@@ -44,14 +44,14 @@ def main(misp, case_str, csvfilescreated):
     print(f"Using MISP event {misp_event.id} for submission")
     for csvfile in csvfilescreated:
         with open(csvfile, newline='') as f:
-            csv_reader = csv.reader(f, delimiter=";")
-            readrows = csv.DictReader(f)
+            
+            readrows = csv.DictReader(f, delimiter=";")
             counter = 0
             for row in readrows:
                 for (k,v) in row.items(): # go over each column name and value 
                     columns[k].append(v)
-            print("test before for loop")
-            print(columns)
+        with open(csvfile, newline='') as g:
+            csv_reader = csv.reader(g, delimiter=";")
             for line in csv_reader:
                 if not line:
                     continue
@@ -60,9 +60,7 @@ def main(misp, case_str, csvfilescreated):
                     continue
                 object_name = None
                 attributes = {}
-
                 if "Hash" in csvfile:
-                    print("test before attributes creation")
                     object_name = "file"
                     attributes = {
                         "sha256": columns["Hash (Sha256)"][counter],
@@ -71,45 +69,42 @@ def main(misp, case_str, csvfilescreated):
                         "sha1": columns["sha1"][counter],
                         "ssdeep": columns["ssdeep"][counter],
                         "tlsh": columns["tlsh"][counter],
-                        "filename": columns["filename"][counter],
+                        "filename": columns["names"][counter],
                         "vt-score": columns["malicious_score"][counter],
                         "text": columns["Type"][counter],
                         "link": columns["link"][counter]
                     }
-                    print("Listing attribute")
-                    print(attributes)
-                    print("attributes created !")
                 elif "URL" in csvfile:
                     object_name = "url"
                     attributes = {
-                        "url": getattr(line, "URL", None),
-                        "vt-score": getattr(line, "malicious_score", None),
-                        "metadatas": getattr(line, "metadatas", None),
-                        "targeted": getattr(line, "targeted", None),
-                        "text": getattr(line, "final_Url", None),
-                        "trackers": getattr(line, "trackers", None),
-                        "link": getattr(line, "link", None)
+                        "url": columns["URL"][counter],
+                        "vt-score": columns["malicious_score"][counter],
+                        "metadatas": columns["metadatas"][counter],
+                        "targeted": columns["targeted"][counter],
+                        "text": columns["final_Url"][counter],
+                        "trackers": columns["trackers"][counter],
+                        "link": columns["link"][counter]
                     }
                 elif "IP" in csvfile:
                     object_name = "domain-ip"
                     attributes = {
-                        "ip-src": getattr(line, "IP", None),
-                        "vt-score": getattr(line, "malicious_score", None),
-                        "owner": getattr(line, "owner", None),
-                        "location": getattr(line, "location", None),
-                        "network": getattr(line, "network", None),
-                        "text": getattr(line, "info_ip", None),
-                        "certificate": getattr(line, "https_certificate", None),
-                        "link": getattr(line, "link", None)
+                        "ip-src": columns["IP"][counter],
+                        "vt-score": columns["malicious_score"][counter],
+                        "owner": columns["owner"][counter],
+                        "location": columns["location"][counter],
+                        "network": columns["network"][counter],
+                        "text": columns["info_ip"][counter],
+                        "certificate": columns["https_certificate"][counter],
+                        "link": columns["link"][counter]
                     }
                 elif "Domain" in csvfile:
                     object_name = "domain"
                     attributes = {
-                        "domain": getattr(line, "Domain", None),
-                        "vt-score": getattr(line, "malicious_score", None),
-                        "creation_date": getattr(line, "creation_date", None),
-                        "text": getattr(line, "whois", None),
-                        "link": getattr(line, "link", None)
+                        "domain": columns["Domain"][counter],
+                        "vt-score": columns["malicious_score"][counter],
+                        "creation_date": columns["creation_date"][counter],
+                        "text": columns["whois"][counter],
+                        "link": columns["link"][counter]
                     }
                 if object_name:
                     print(attributes)
@@ -144,7 +139,7 @@ def main(misp, case_str, csvfilescreated):
                             submit_to_misp(misp, misp_event, r)
                         except Exception as e:
                             print(f"Failed to submit MISP object: {e}")
-
+                counter += 1
 def submit_to_misp(misp, misp_event, misp_objects):
     '''
     Submit a list of MISP objects to a MISP event
