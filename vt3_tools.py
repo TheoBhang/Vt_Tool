@@ -195,8 +195,8 @@ JY7.         ~YJY^                 :!JYJJJ^...~JJ^
     # Parse the command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_file", "-f", type=str, help="Input file containing values to analyze.")
-    parser.add_argument("--case_id", "-c", type=str, help="Id for the case to create")
-    parser.add_argument("--api_key", "-a", type=str, help="VirusTotal API key, default VTAPIKEY env var.")
+    parser.add_argument("--case_id", "-c", type=str, help="Id for the case to create (Or MISP event UUID to create or update)")
+    parser.add_argument("--api_key", "-a", type=str, help="VirusTotal API key, default VTAPIKEY env var")
     parser.add_argument("--api_key_file", "-af", type=str, help="VirusTotal API key in a file.")
     parser.add_argument("--proxy", "-p", type=str, help="Proxy to use for requests.")
     parser.add_argument("values", type=str, nargs="*", help="The values to analyze. Can be IP addresses, hashes, URLs, or domains.")
