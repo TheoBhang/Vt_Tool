@@ -50,6 +50,8 @@ def main(misp, case_str, csvfilescreated):
             for row in readrows:
                 for (k,v) in row.items(): # go over each column name and value 
                     columns[k].append(v)
+            print("test before for loop")
+            print(columns)
             for line in csv_reader:
                 if not line:
                     continue
