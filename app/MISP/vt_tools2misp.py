@@ -73,6 +73,7 @@ def main(misp, case_str, csvfilescreated):
                         "text": columns["Type"][counter],
                         "link": columns["link"][counter]
                     }
+                    print(attributes)
                 elif "URL" in csvfile:
                     object_name = "url"
                     attributes = {
