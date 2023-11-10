@@ -106,6 +106,7 @@ def main(misp, case_str, csvfilescreated):
                         "link": getattr(line, "link", None)
                     }
                 if object_name:
+                    print(attributes)
                     misp_object = pymisp.MISPObject(name=object_name)
                     print(f"Adding {object_name} to MISP event")
                     if attributes:
