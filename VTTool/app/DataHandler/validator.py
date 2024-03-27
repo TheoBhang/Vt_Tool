@@ -7,10 +7,10 @@ class DataValidator:
     A class for validating different types of data.
 
     Attributes:
-        pattern_ip (re.Pattern): A regular expression pattern for matching IP addresses.
-        pattern_url (re.Pattern): A regular expression pattern for matching URLs.
-        pattern_hash (re.Pattern): A regular expression pattern for matching hashes.
-        pattern_domain (re.Pattern): A regular expression pattern for matching domains.
+        pattern_IP (re.Pattern): A regular expression pattern for matching IP addresses.
+        pattern_URL (re.Pattern): A regular expression pattern for matching URLs.
+        pattern_Hash (re.Pattern): A regular expression pattern for matching hashes.
+        pattern_Domain (re.Pattern): A regular expression pattern for matching domains.
 
     Methods:
         validate_ip(ip): Validate an IP address and determine its type.
@@ -21,10 +21,10 @@ class DataValidator:
     """
 
     def __init__(self):
-        self.pattern_ip = Pattern.pattern_ip
-        self.pattern_url = Pattern.pattern_url
-        self.pattern_hash = Pattern.pattern_hash
-        self.pattern_domain = Pattern.pattern_domain
+        self.pattern_IP = Pattern.pattern_IP
+        self.pattern_URL = Pattern.pattern_URL
+        self.pattern_Hash = Pattern.pattern_Hash
+        self.pattern_Domain = Pattern.pattern_Domain
         self.hash_regex = r'(?i)^([a-f0-9]{32}|[a-f0-9]{40}|[a-f0-9]{56}|[a-f0-9]{64}|[a-f0-9]{96}|[a-f0-9]{128})$'
         self.ssdeep_regex = r'(?i)^[0-9]+:[a-zA-Z0-9/+]{1,}:[a-zA-Z0-9/+]{1,}$'
         self.empty_md5 = "d41d8cd98f00b204e9800998ecf8427e"
@@ -35,7 +35,7 @@ class DataValidator:
         self.empty_sha512 = "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"
         self.empty_ssdeep = "3::"
 
-    def validate_ipv4(self, ip):
+    def validate_ipv4(self,ip):
         """
         Validate an IPv4 address and determine its type.
 
@@ -47,30 +47,27 @@ class DataValidator:
         """
         ip_type = None  # Initialize the type to None
 
-        try:
-            ip_address = ipaddress.IPv4Address(ip)
-            if ip_address.is_private:
+        # Check if the IP address is in the correct format
+        if Pattern.pattern_IP.match(ip):
+            if ipaddress.ip_address(ip).is_private:
                 ip_type = 'Private IPv4'
-            elif ip_address.is_global:
+            if ipaddress.ip_address(ip).is_global:
                 ip_type = 'Public IPv4'
-            elif ip_address.is_reserved:
+            if ipaddress.ip_address(ip).is_reserved:
                 ip_type = 'Reserved IPv4'
-            elif ip_address.is_unspecified:
+            if ipaddress.ip_address(ip).is_unspecified:
                 ip_type = 'Unspecified IPv4'
-            elif ip_address.is_loopback:
+            if ipaddress.ip_address(ip).is_loopback:
                 ip_type = 'Loopback IPv4'
-            elif ip_address.is_link_local:
+            if ipaddress.ip_address(ip).is_link_local:
                 ip_type = 'Link-local IPv4'
-            elif ip_address.is_multicast:
+            if ipaddress.ip_address(ip).is_multicast:
                 ip_type = 'Multicast IPv4'
-        except ipaddress.AddressValueError:
-            # Address is not a valid IPv4 address
-            pass
 
-        return ip_type
+        return (ip_type)
 
 
-    def validate_ipv6(self, ip):
+    def validate_ipv6(self,ip):
         """
         Validate an IPv6 address and determine its type.
 
@@ -78,46 +75,30 @@ class DataValidator:
         ip (str): The IPv6 address to validate.
 
         Returns:
-        str: The type of the IPv6 address (one of "Public", "Reserved", "Private", "Unspecified", "Loopback", "Link-local", "Multicast", or None).
+        tuple: The IP version (IPv6) and the type of the IP address (one of "Public", "Reserved", "Private", or None).
         """
         ip_type = None  # Initialize the type to None
 
         # Check if the IP address is in the correct format
-        try:
-            # Create an IPv6Address object
-            ipv6_address = ipaddress.ip_address(ip)
-
-            # Check various properties of the IPv6 address to determine its type
-            if ipv6_address.is_private:
+        if Pattern.pattern_IP.match(ip):
+            if ipaddress.ip_address(ip).is_private:
                 ip_type = 'Private IPv6'
-            elif ipv6_address.is_global:
+            if ipaddress.ip_address(ip).is_global:
                 ip_type = 'Public IPv6'
-            elif ipv6_address.is_reserved:
+            if ipaddress.ip_address(ip).is_reserved:
                 ip_type = 'Reserved IPv6'
-            elif ipv6_address.is_unspecified:
+            if ipaddress.ip_address(ip).is_unspecified:
                 ip_type = 'Unspecified IPv6'
-            elif ipv6_address.is_loopback:
+            if ipaddress.ip_address(ip).is_loopback:
                 ip_type = 'Loopback IPv6'
-            elif ipv6_address.is_link_local:
+            if ipaddress.ip_address(ip).is_link_local:
                 ip_type = 'Link-local IPv6'
-            elif ipv6_address.is_multicast:
+            if ipaddress.ip_address(ip).is_multicast:
                 ip_type = 'Multicast IPv6'
-        except ValueError:
-                    # Address is not a valid IPv4 address
-                    pass
 
         return ip_type
 
-    def get_ip_version(self, address):
-        """
-        Get the IP version of an IP address.
-
-        Parameters:
-        address (str): The IP address to check.
-
-        Returns:
-        str: The IP version ('IPv4', 'IPv6', or 'Unknown').
-        """
+    def get_ip_version(self,address):
         try:
             ip = ipaddress.ip_address(address)
             if ip.version == 4:
@@ -129,23 +110,14 @@ class DataValidator:
         except ValueError:
             return 'Invalid'
 
-    def is_valid_ip_address(self, address):
-        """
-        Check if an IP address is valid.
-
-        Parameters:
-        address (str): The IP address to check.
-
-        Returns:
-        bool: True if the address is valid, False otherwise.
-        """
+    def is_valid_ip_address(self,address):
         try:
-            ipaddress.ip_address(address)
+            ip = ipaddress.ip_address(address)
             return True
         except ValueError:
             return False
 
-    def validate_ip(self, ip):
+    def validate_ip(self,ip):
         """
         Validate an IP address and determine its type.
 
@@ -153,15 +125,15 @@ class DataValidator:
         ip (str): The IP address to validate.
 
         Returns:
-        str: The type of the IP address ('Public', 'Reserved', 'Private', 'Unspecified', 'Loopback', 'Link-local', 'Multicast', or None).
+        str: The type of the IP address (one of "Public", "Reserved", or None).
         """
-        ip_type = None
+        ip_type = None  # Initialize the type to None
 
+        # Check if the IP address is in the correct format
         if self.is_valid_ip_address(ip):
-            ip_version = self.get_ip_version(ip)
-            if ip_version == 'IPv4':
+            if self.get_ip_version(ip) == 'IPv4':
                 ip_type = self.validate_ipv4(ip)
-            elif ip_version == 'IPv6':
+            elif self.get_ip_version(ip) == 'IPv6':
                 ip_type = self.validate_ipv6(ip)
         return ip_type
 
@@ -173,28 +145,29 @@ class DataValidator:
         domain (str): The domain to validate.
 
         Returns:
-        str: The type of the domain ('DOMAIN') if valid, otherwise None.
+        str: The type of the domain (one of "Valid", "Invalid", or None).
         """
-        pattern = self.pattern_domain
+        domain_type = None  # Initialize the type to None
+        pattern = re.compile(
+            r'(?:[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b)(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)'
+        )
+
+        # Check if the domain is in the correct format
         if pattern.match(domain):
-            return "DOMAIN"
-        else:
-            return None
+            domain_type = "DOMAIN"  # Set the type to "DOMAIN
 
-    def validate_hash(self, h):
-        """
-        Validate hash value and return hash type.
+        return domain_type  # Return the type
 
-        Parameters:
-        h (str): The hash value to validate.
-
-        Returns:
-        str: The type of the hash ('MD5', 'SHA-1', 'SHA-224', 'SHA-256', 'SHA-384', 'SHA-512', 'SSDEEP') if valid, otherwise None.
-        """
-        h = h.replace(" ", "")  # Remove whitespace from the hash value
+    def validate_hash(self,h):
+        """Validate hash value and return hash type"""
+        hash_type = None
+        h = h.replace(" ", "")
+        # Check if the input is a string
         if isinstance(h, str):
-            hash_length = len(h)
-            if hash_length in {32, 40, 56, 64, 96, 128}:
+            # Use a single regular expression to match all types of hash values
+            
+            if re.match(self.hash_regex, h) and h not in [self.empty_md5, self.empty_sha1, self.empty_sha224, self.empty_sha256, self.empty_sha384, self.empty_sha512]:
+                # Determine the type of hash by checking the length of the input string
                 hash_types = {
                     32: "MD5",
                     40: "SHA-1",
@@ -203,10 +176,13 @@ class DataValidator:
                     96: "SHA-384",
                     128: "SHA-512",
                 }
-                return hash_types[hash_length]
+                hash_length = len(h)
+                if hash_length in hash_types:
+                    hash_type = hash_types[hash_length]
             elif re.match(self.ssdeep_regex, h) and h != self.empty_ssdeep:
-                return "SSDEEP"
-        return None
+                hash_type = "SSDEEP"
+
+        return hash_type
 
     def validate_url(self, u):
         """
@@ -216,8 +192,12 @@ class DataValidator:
         u (str): The URL to validate.
 
         Returns:
-        str: The type of the URL ('URL') if valid, otherwise None.
+        str: The type of the URL (one of "Valid" or None).
         """
-        if self.pattern_url.match(u):
-            return "URL"
-        return None
+        url_type = None  # Initialize the type to None
+
+        # Check if the URL is in the correct format
+        if self.pattern_URL.match(u):
+            url_type = "URL"  # Set the type to "Valid"
+
+        return url_type  # Return the type
