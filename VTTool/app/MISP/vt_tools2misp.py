@@ -46,29 +46,25 @@ def process_csv_file(csv_file):
             data.append(row)
     return data
 
-def create_misp_objects(data, object_name, counter):
+def create_misp_objects_from_csv(data, object_name):
     """
     Create MISP objects from CSV data.
 
     :param data: List of dictionaries containing row data.
     :param object_name: Name of the MISP object.
-    :param counter: Counter for iterating through data rows.
     :return: List of MISP objects.
     """
     misp_objects = []
     for row in data:
-        attributes = {}
-        for key, value in row.items():
-            attributes[key] = value[counter]
         misp_object = pymisp.MISPObject(name=object_name)
-        for attr_name, attr_value in attributes.items():
-            attribute_type = get_attribute_type(attr_name)
+        for key, value in row.items():
+            attribute_type = get_misp_attribute_type(key)
             if attribute_type:
-                misp_object.add_attribute(attr_name, value=attr_value, type=attribute_type)
+                misp_object.add_attribute(key, value=value, type=attribute_type)
         misp_objects.append(misp_object)
     return misp_objects
 
-def get_object_name(csv_file):
+def get_misp_object_name(csv_file):
     """
     Get the MISP object name based on the CSV file name.
 
@@ -80,13 +76,13 @@ def get_object_name(csv_file):
     elif "URL" in csv_file:
         return "url"
     elif "IP" in csv_file:
-        return "domain-ip"
+        return "ip"
     elif "Domain" in csv_file:
         return "domain"
     else:
-        return "unknown"  # You can handle other cases accordingly
+        return "unknown"  # Handle other cases accordingly
 
-def get_attribute_type(attr_name):
+def get_misp_attribute_type(attr_name):
     """
     Get MISP attribute type based on attribute name.
 
@@ -106,35 +102,34 @@ def get_attribute_type(attr_name):
     }
     return attribute_types.get(attr_name)
 
-def main(misp, case_str, csvfilescreated):
+def process_and_submit_to_misp(misp, case_str, csv_files_created):
     """
-    Main program logic for submitting data to MISP.
+    Process CSV files and submit data to MISP.
 
     :param misp: PyMISP API object for interfacing with MISP.
     :param case_str: The case string to use in the MISP event title.
-    :param csvfilescreated: A list of CSV files to read data from.
+    :param csv_files_created: A list of CSV files to read data from.
     """
     misp_event = get_misp_event(misp, case_str)
     print(f"Using MISP event {misp_event.id} for submission")
-    for csv_file in csvfilescreated:
-        object_name = get_object_name(csv_file)
+    for csv_file in csv_files_created:
+        object_name = get_misp_object_name(csv_file)
         data = process_csv_file(csv_file)
-        for counter in range(len(data)):
-            misp_objects = create_misp_objects(data, object_name, counter)
+        for _ in range(len(data)):
+            misp_objects = create_misp_objects_from_csv(data, object_name)
             try:
                 misp.add_objects(misp_event, misp_objects)
                 misp.update_event(misp_event)
             except Exception as e:
                 print(f"Failed to submit MISP objects: {e}")
-                
-def submit_to_misp(misp, misp_event, misp_objects):
+
+def submit_misp_objects(misp, misp_event, misp_objects):
     """
     Submit a list of MISP objects to a MISP event.
 
     :param misp: PyMISP API object for interfacing with MISP.
     :param misp_event: MISPEvent object.
-    :param misp_objects: List of MISPObject objects. Must be a list.
-    :return: True if submission is successful, False otherwise.
+    :param misp_objects: List of MISPObject objects.
     """
     try:
         # Add MISP objects to the event
@@ -145,12 +140,10 @@ def submit_to_misp(misp, misp_event, misp_objects):
         misp.update_event(misp_event)
 
         logging.info("MISP objects submitted successfully.")
-        return True
 
     except Exception as e:
         logging.error(f"Failed to submit MISP objects: {e}")
-        return False
-            
+        
 
 def misp_event(case_str, csvfilescreated):
     """
@@ -173,7 +166,7 @@ def misp_event(case_str, csvfilescreated):
         logger.info("MISP connection established successfully.")
 
         # Start the process
-        main(misp, case_str, csvfilescreated)
+        process_and_submit_to_misp(misp, case_str, csvfilescreated)
 
     except KeyboardInterrupt:
         logger.info("Exiting...")
