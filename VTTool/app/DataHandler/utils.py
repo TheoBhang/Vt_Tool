@@ -1,5 +1,4 @@
-from datetime import datetime       # for working with dates and times
-import time                         # for creating countdown timers
+from datetime import timezone     # for working with dates and times
 import os                           # for interacting with the operating system
 
 def utc2local(utc):
@@ -12,50 +11,63 @@ def utc2local(utc):
     Returns:
     datetime: The local time.
     """
-    epoch = time.mktime(utc.timetuple())
-    offset = datetime.fromtimestamp(epoch) - datetime.utcfromtimestamp(epoch)
-    return utc + offset
+    return utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
 
-def get_api_key(api_key: str, api_key_file: str) -> str:
+def get_api_key(api_key: str = None, api_key_file: str = None) -> str:
     """
     Get the API key.
 
     Parameters:
-    api_key (str): The API key.
-    api_key_file (str): The file containing the API key.
+    api_key (str, optional): The API key.
+    api_key_file (str, optional): The file containing the API key.
 
     Returns:
     str: The API key.
     """
-    # Get the API key
+    # Check if API key is provided directly
     if api_key:
         return api_key
+
+    # Check if API key is provided via a file
     elif api_key_file:
-        with open(api_key_file, "r") as f:
-            return f.read().strip()
+        try:
+            with open(api_key_file, "r") as f:
+                return f.read().strip()
+        except FileNotFoundError:
+            print(f"API key file '{api_key_file}' not found.")
+            exit()
+
+    # Check if API key is provided via environment variable
     elif os.getenv("VTAPIKEY"):
         return os.getenv("VTAPIKEY")
+
+    # No API key provided, print error and exit
     else:
         print("No API key provided.")
         exit()
 
-def get_proxy(proxy: str) -> str:
+def get_proxy(proxy: str = None) -> str:
     """
     Get the proxy.
 
     Parameters:
-    proxy(str): The proxy.
+    proxy (str, optional): The proxy.
+
     Returns:
     str: The proxy.
-    
     """
+    # Check if proxy is provided directly
     if proxy:
         return proxy
+
+    # Check if proxy is provided via environment variable
     elif os.getenv("PROXY"):
         return os.getenv("PROXY")
+
+    # No proxy provided, print error and return None
     else:
         print("No Proxy provided.")
-        return None
+        return "No proxy found"
     
 def get_user_choice():
     """
@@ -65,27 +77,18 @@ def get_user_choice():
     str: The user's choice.
     """
     # Get the user's choice
-    choice = input("Do you want to analyse a particular type ? (y/n) : ")
+    choice = input("Do you want to analyze a particular type? (y/n): ").strip().lower()
 
-    if choice == "y" or choice == "Y":
-        choice = input("Which type do you want to analyse ? \n\td = Domain\n\th = Hash\n\ti = Ip\n\tu = Url\nYour choice : ")
-        if choice == "ip" or choice == "i" or choice == "IP" or choice == "I":
-            value_type = "ips"
-        elif choice == "domain" or choice == "d" or choice == "DOMAIN" or choice == "D":
-            value_type = "domains"
-        elif choice == "url" or choice == "u" or choice == "URL" or choice == "U":
-            value_type = "urls"
-        elif choice == "hash" or choice == "h" or choice == "HASH" or choice == "H":
-            value_type = "hashes"
-        else:
-            print("Invalid choice.")
-            print("Defaulting to all types.")
-            value_type = None
-    elif choice == "n" or choice == "N":
+    if choice == "y":
+        mapping = {"ip": "ips", "i": "ips", "domain": "domains", "d": "domains", "url": "urls", "u": "urls", "hash": "hashes", "h": "hashes"}
+        choice = input("Which type do you want to analyze? (ip/domain/url/hash): ").strip().lower()
+        value_type = mapping.get(choice)
+        if not value_type:
+            print("Invalid choice. Defaulting to all types.")
+    elif choice == "n":
         value_type = None
     else:
-        print("Invalid choice.")
-        print("Defaulting to all types.")
+        print("Invalid choice. Defaulting to all types.")
         value_type = None
     
     return value_type

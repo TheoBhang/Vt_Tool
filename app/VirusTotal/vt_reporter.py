@@ -1,5 +1,5 @@
 from vt import url_id               # for interacting with urls in VirusTotal
-from ..DataHandler.utils import utc2local       # for converting UTC time to local time
+from app.DataHandler.utils import utc2local       # for converting UTC time to local time
 
 IPV4_PUBLIC_TYPE = "PUBLIC IPV4"
 NOT_FOUND_ERROR = "Not found"

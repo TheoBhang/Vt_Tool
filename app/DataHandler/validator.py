@@ -1,6 +1,6 @@
 import re
 import ipaddress
-from ..FileHandler.read_file import Pattern
+from app.FileHandler.read_file import Pattern
 
 class DataValidator:
     """

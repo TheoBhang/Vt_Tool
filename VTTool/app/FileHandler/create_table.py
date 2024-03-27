@@ -1,7 +1,7 @@
-from typing import List             # for defining types of variables
-from prettytable import PrettyTable as PT # for formatting results in a table
+from typing import List
+from prettytable import PrettyTable
 
-class PrettyTable:
+class CustomPrettyTable:
     """
     A class for creating a table of data.
     """
@@ -10,29 +10,37 @@ class PrettyTable:
         self.headers = headers
         self.data = data
 
-    def divide_list(self, lst, n):
-        return [lst[i:i + n] for i in range(0, len(lst), n)]
-
-    def create_table(self):
+    def create_table(self, sort_by: str = None, reverse_sort: bool = False, align: str = 'l') -> str:
         """
         Create a table of data.
+
+        Parameters:
+        - sort_by (str): Column name to sort the table by.
+        - reverse_sort (bool): Whether to sort the table in reverse order.
+        - align (str): Alignment of columns ('l' for left, 'r' for right, 'c' for center).
 
         Returns:
         str: The table as a string.
         """
-        # Create the table
-        table = PT()
+        table = PrettyTable()
+        
+        # Validate headers and data length
+        if len(self.headers) != len(self.data[0]):
+            raise ValueError("Number of headers must match the number of columns in data.")
+        
+        # Set headers and alignment
         table.field_names = self.headers
-        table.reversesort = True
+        table.align = align
+        
+        # Sort data if sort_by is specified
+        if sort_by:
+            sort_index = self.headers.index(sort_by)
+            self.data.sort(key=lambda x: x[sort_index], reverse=reverse_sort)
 
-        # Filter the data to only include rows with the same length as the headers list
-
-        filtered_data = self.divide_list(self.data, len(self.headers))
-        # Add the rows to the table
-        for row in filtered_data:
+        # Add rows to the table
+        for row in self.data:
             table.add_row(row)
-
-        # Return the table as a string
+        
         return str(table)
 
 

@@ -1,5 +1,4 @@
-from datetime import datetime, timezone     # for working with dates and times
-import time                         # for creating countdown timers
+from datetime import timezone     # for working with dates and times
 import os                           # for interacting with the operating system
 
 def utc2local(utc):

@@ -1,189 +1,205 @@
 ''' Convert a VirusTotal report into MISP objects '''
 # Revisited view of the https://github.com/MISP/PyMISP/blob/main/examples/vt_to_misp.py script
 import csv
+import os
 import logging
 import warnings
-import os
 import pymisp
-import urllib3
-urllib3.disable_warnings()
 
-# Disable warnings from the VirusTotal API
+# Disable warnings
 warnings.filterwarnings("ignore")
 
-logging.getLogger("Python").setLevel(logging.CRITICAL)
-logging.getLogger().setLevel(logging.CRITICAL)
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def get_misp_event(misp, case_str):
-    '''
-    Get or create a MISP event for the given case string
+    """
+    Get or create a MISP event for the given case string.
 
-    :param misp: PyMISP API object for interfacing with MISP
-    :param case_str: The case string to use in the MISP event title
-    '''
-    # Search for existing event with the given case string
-    if case_str:
-        event = misp.get_event(case_str)
+    :param misp: PyMISP API object for interfacing with MISP.
+    :param case_str: The case string to use in the MISP event title.
+    :return: The MISP event object.
+    """
+    try:
+        if case_str:
+            event = misp.get_event(case_str)
+        else:
+            event = misp.new_event(info="VirusTotal Report")
+        misp_event = pymisp.MISPEvent()
+        misp_event.load(event)
+        return misp_event
+    except Exception as e:
+        logger.error(f"Failed to get or create MISP event: {e}")
+
+def process_csv_file(csv_file):
+    """
+    Process data from a CSV file.
+
+    :param csv_file: Path to the CSV file.
+    :return: A list of dictionaries containing row data.
+    """
+    data = []
+    with open(csv_file, newline='') as f:
+        reader = csv.DictReader(f, delimiter=";")
+        for row in reader:
+            data.append(row)
+    return data
+
+def create_misp_objects(data, object_name, counter):
+    """
+    Create MISP objects from CSV data.
+
+    :param data: List of dictionaries containing row data.
+    :param object_name: Name of the MISP object.
+    :param counter: Counter for iterating through data rows.
+    :return: List of MISP objects.
+    """
+    misp_objects = []
+    for row in data:
+        attributes = {}
+        for key, value in row.items():
+            attributes[key] = value[counter]
+        misp_object = pymisp.MISPObject(name=object_name)
+        for attr_name, attr_value in attributes.items():
+            attribute_type = get_attribute_type(attr_name)
+            if attribute_type:
+                misp_object.add_attribute(attr_name, value=attr_value, type=attribute_type)
+        misp_objects.append(misp_object)
+    return misp_objects
+
+def get_object_name(csv_file):
+    """
+    Get the MISP object name based on the CSV file name.
+
+    :param csv_file: Path to the CSV file.
+    :return: MISP object name.
+    """
+    if "Hash" in csv_file:
+        return "file"
+    elif "URL" in csv_file:
+        return "url"
+    elif "IP" in csv_file:
+        return "domain-ip"
+    elif "Domain" in csv_file:
+        return "domain"
     else:
-        event = misp.new_event(info="VirusTotal Report")
-    misp_event = pymisp.MISPEvent()
-    misp_event.load(event)
-    return misp_event
+        return "unknown"  # You can handle other cases accordingly
+
+def get_attribute_type(attr_name):
+    """
+    Get MISP attribute type based on attribute name.
+
+    :param attr_name: Name of the attribute.
+    :return: MISP attribute type or None if not found.
+    """
+    attribute_types = {
+        "ip-src": "ip-src",
+        "url": "url",
+        "sha256": "sha256",
+        "md5": "md5",
+        "sha1": "sha1",
+        "ssdeep": "ssdeep",
+        "tlsh": "tlsh",
+        "link": "link",
+        "size": "size-in-bytes"
+    }
+    return attribute_types.get(attr_name)
 
 def main(misp, case_str, csvfilescreated):
-    '''
-    Main program logic for submitting data to MISP
+    """
+    Main program logic for submitting data to MISP.
 
-    :param misp: PyMISP API object for interfacing with MISP
-    :param case_str: The case string to use in the MISP event title
-    :param csvfilescreated: A list of CSV files to read data from
-    '''
+    :param misp: PyMISP API object for interfacing with MISP.
+    :param case_str: The case string to use in the MISP event title.
+    :param csvfilescreated: A list of CSV files to read data from.
+    """
     misp_event = get_misp_event(misp, case_str)
     print(f"Using MISP event {misp_event.id} for submission")
-    for csvfile in csvfilescreated:
-        with open(csvfile, newline='') as f:
-            csv_reader = csv.reader(f, delimiter=";")
-            counter = 0
-            for line in csv_reader:
-                if not line:
-                    continue
-                if counter == 0:
-                    counter += 1
-                    continue
-                object_name = None
-                attributes = {}
-
-                if "Hashes" in csvfile:
-                    object_name = "file"
-                    attributes = {
-                        "sha256": line[0],
-                        "md5": line[7],
-                        "size":line[6],
-                        "sha1": line[8],
-                        "ssdeep": line[9],
-                        "tlsh": line[10],
-                        "filename": line[11],
-                        "vt-score": line[1],
-                        "text": line[12],
-                        "link": line[13]
-                    }
-                elif "URL" in csvfile:
-                    object_name = "url"
-                    attributes = {
-                        "url": line[0],
-                        "vt-score": line[1],
-                        "metadatas": line[4],
-                        "targeted": line[5],
-                        "text": line[6],
-                        "trackers": line[7],
-                        "link": line[8]
-                    }
-                elif "IP" in csvfile:
-                    object_name = "domain-ip"
-                    attributes = {
-                        "ip-src": line[0],
-                        "vt-score": line[1],
-                        "owner": line[4],
-                        "location": line[5],
-                        "network": line[6],
-                        "text": line[7],
-                        "certificate": line[8],
-                        "link": line[9]
-                    }
-                if object_name:
-                    misp_object = pymisp.MISPObject(name=object_name)
-                    print(f"Adding {object_name} to MISP event")
-                    if attributes:
-                        print(attributes)
-                        for attr_name, attr_value in attributes.items():
-                            if attr_name == "ip-src":
-                                misp_object.add_attribute(attr_name, value=attr_value, type="ip-src")
-                            elif attr_name == "url":
-                                misp_object.add_attribute(attr_name, value=attr_value, type="url")
-                            elif attr_name == "sha256":
-                                misp_object.add_attribute(attr_name, value=attr_value, type="sha256")
-                            elif attr_name == "md5":
-                                misp_object.add_attribute(attr_name, value=attr_value, type="md5")
-                            elif attr_name == "sha1":
-                                misp_object.add_attribute(attr_name, value=attr_value, type="sha1")
-                            elif attr_name == "ssdeep":
-                                misp_object.add_attribute(attr_name, value=attr_value, type="ssdeep")
-                            elif attr_name == "tlsh":
-                                if attr_value != "No tlsh Found":
-                                    misp_object.add_attribute(attr_name, value=attr_value, type="tlsh")
-                            elif attr_name == "link":
-                                misp_object.add_attribute(attr_name, value=attr_value, type="link")
-                            elif attr_name == "size":
-                                misp_object.add_attribute(attr_name, value=attr_value, type="size-in-bytes")
-                            else:
-                                misp_object.add_attribute(attr_name, value=attr_value, type="text")
-
-                        try:
-                            r = misp.add_object(misp_event, misp_object)
-                            submit_to_misp(misp, misp_event, r)
-                        except Exception as e:
-                            print(f"Failed to submit MISP object: {e}")
-
+    for csv_file in csvfilescreated:
+        object_name = get_object_name(csv_file)
+        data = process_csv_file(csv_file)
+        for counter in range(len(data)):
+            misp_objects = create_misp_objects(data, object_name, counter)
+            try:
+                misp.add_objects(misp_event, misp_objects)
+                misp.update_event(misp_event)
+            except Exception as e:
+                print(f"Failed to submit MISP objects: {e}")
+                
 def submit_to_misp(misp, misp_event, misp_objects):
-    '''
-    Submit a list of MISP objects to a MISP event
+    """
+    Submit a list of MISP objects to a MISP event.
 
-    :misp: PyMISP API object for interfacing with MISP
-
-    :misp_event: MISPEvent object
-
-    :misp_objects: List of MISPObject objects. Must be a list
-    '''
-    # Add MISP objects to the event
-    for misp_object in misp_objects:
-        misp.add_object(misp_event.id, misp_object)
-    # Update the event
+    :param misp: PyMISP API object for interfacing with MISP.
+    :param misp_event: MISPEvent object.
+    :param misp_objects: List of MISPObject objects. Must be a list.
+    :return: True if submission is successful, False otherwise.
+    """
     try:
+        # Add MISP objects to the event
+        for misp_object in misp_objects:
+            misp.add_object(misp_event.id, misp_object)
+        
+        # Update the event
         misp.update_event(misp_event)
-    except:
-        pass
+
+        logging.info("MISP objects submitted successfully.")
+        return True
+
+    except Exception as e:
+        logging.error(f"Failed to submit MISP objects: {e}")
+        return False
             
 
 def misp_event(case_str, csvfilescreated):
-    try:
-        print("Initializing MISP connection...")
-        misp_key = os.getenv("MISPKEY")
-        misp_url = os.getenv("MISPURL")
-        if not misp_url:
-            misp_url = input("Enter your MISP URL: ")
-        if not misp_key:
-            misp_key = input("Enter your MISP key: ")
-        misp = pymisp.ExpandedPyMISP(misp_url, misp_key, False)
-        print("MISP connection established successfully.")
-
-        # Start checking VT and converting the reports
-        main(misp, case_str, csvfilescreated)
-
-
-    except KeyboardInterrupt:
-        print("Exiting...")
-    except pymisp.exceptions.InvalidMISPObject as err:
-        logging.error(err)
-        
-def mispchoice(case_str, csvfilescreated):
     """
-    Asks the user if they want to send the results to MISP and calls the misp_event function if the user chooses to do so.
+    Initialize MISP connection and start the process of sending data to MISP.
 
     :param case_str: A string representing the case.
     :param csvfilescreated: A list of CSV files created.
     """
-    print("Do you want to send the results to MISP?")
-    print("Yes (1, Y, yes)")
-    print("No (2, N, no)")
     try:
-        choice = input("Enter your choice: ")
+        logger.info("Initializing MISP connection...")
+        misp_key = os.getenv("MISPKEY")
+        misp_url = os.getenv("MISPURL")
+
+        if not misp_key:
+            misp_key = input("Enter your MISP key: ")
+        if not misp_url:
+            misp_url = input("Enter your MISP URL: ")
+
+        misp = pymisp.ExpandedPyMISP(misp_url, misp_key, False)
+        logger.info("MISP connection established successfully.")
+
+        # Start the process
+        main(misp, case_str, csvfilescreated)
+
     except KeyboardInterrupt:
-        print("Exiting...")
-        return
-    if choice.lower() in ["1", "y", "yes"]:
-        misp_event(case_str, csvfilescreated )
-    elif choice.lower() in ["2", "n", "no"]:
-        print("MISP event not created.")
-    else:
-        print("Invalid choice. Please try again.")
-        mispchoice(case_str, csvfilescreated)
+        logger.info("Exiting...")
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
+        
+def misp_choice(case_str, csvfilescreated):
+    """
+    Ask the user if they want to send the results to MISP and proceed accordingly.
+
+    :param case_str: A string representing the case.
+    :param csvfilescreated: A list of CSV files created.
+    """
+    try:
+        print("Do you want to send the results to MISP?")
+        print("Yes (1, Y, yes)")
+        print("No (2, N, no)")
+        choice = input("Enter your choice: ").lower()
+
+        if choice in ["1", "y", "yes"]:
+            misp_event(case_str, csvfilescreated)
+        elif choice in ["2", "n", "no"]:
+            print("MISP event not created.")
+        else:
+            print("Invalid choice. Please try again.")
+            misp_choice(case_str, csvfilescreated)
+
+    except KeyboardInterrupt:
+        logger.info("Exiting...")

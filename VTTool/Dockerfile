@@ -1,20 +1,21 @@
-FROM python:alpine
+FROM python:3.9
 
 # Set the working directory
-WORKDIR /worker/
+WORKDIR /worker/VTTool
 
-# Copy the requirements file
-COPY ./ /worker/VTTool/
-
-RUN apk update \
-    && apk upgrade \
-    && apk add --no-cache --update \
-    py3-pip \
-    && rm -rf /var/cache/apk/*
+# Copy the requirements file separately to leverage Docker's layer caching
+COPY requirements.txt .
 
 # Install dependencies
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r VTTool/requirements.txt
+RUN apk update && \
+    apk upgrade && \
+    apk add --no-cache --update gcc musl-dev libffi-dev openssl-dev && \
+    pip install --no-cache-dir -r requirements.txt && \
+    apk del gcc musl-dev libffi-dev openssl-dev && \
+    rm -rf /var/cache/apk/*
 
+# Copy the application code
+COPY . .
 
-ENTRYPOINT ["python","VTTool/vt3_tools.py"]
+# Set the entrypoint
+ENTRYPOINT ["python", "vt3_tools.py"]
