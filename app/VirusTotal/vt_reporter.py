@@ -37,7 +37,7 @@ class VTReporter:
             report = self.vt.get_object(api_endpoints.get(value_type))
         except Exception as e:
             if "NotFoundError" in str(e):
-                report = NOT_FOUND_ERROR
+                print(NOT_FOUND_ERROR)
             else:
                 raise e
 
@@ -166,7 +166,7 @@ class VTReporter:
             try:
                 row_object.pop("info")
             except Exception as e:
-                print(e)
+                pass
             
             # Construct rows from the value object
             rows = [[key, value] for key, value in row_object.items()]
@@ -182,7 +182,7 @@ class VTReporter:
             try:
                 row_object.pop("info")
             except Exception as e:
-                print(e)
+                pass
             
             # Construct rows from the value object
             rows = [[key, value] for key, value in row_object.items()]

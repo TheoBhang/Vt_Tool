@@ -62,14 +62,13 @@ class OutputHandler:
         None
         """
         file_path = self._get_file_path(value_type)
-
         try:
             with open(file_path, 'w', newline='') as data_file:
                 csv_writer = csv.DictWriter(
-                    data_file, fieldnames=data[0].keys(), delimiter=',')
+                    data_file, fieldnames=data[0][0].keys(), delimiter=',')
                 csv_writer.writeheader()
                 for obj in data:
-                    csv_writer.writerow(obj)
+                    csv_writer.writerow(obj[0])
         except Exception as e:
             print(f"Error occurred while writing CSV file: {e}")
 
@@ -90,8 +89,7 @@ class OutputHandler:
 
         try:
             with open(file_path, "w", encoding="utf-8") as f:
-                for row in data:
-                    f.write("\t".join(row) + "\n")
+                f.write(str(data))
         except Exception as e:
             print(f"Error occurred while writing TXT file: {e}")
 

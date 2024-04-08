@@ -2,9 +2,9 @@ import logging
 import argparse
 from datetime import datetime
 from dotenv import load_dotenv
-from app.MISP.vt_tools2misp import mispchoice
+from app.MISP.vt_tools2misp import misp_choice
 from init import Initializator
-from app.FileHandler.create_table import PrettyTable
+from app.FileHandler.create_table import CustomPrettyTable as cpt
 from app.FileHandler.read_file import ValueReader
 from app.DataHandler.utils import get_api_key, get_proxy, get_user_choice
 
@@ -93,15 +93,15 @@ def analyze_values(args, types):
 
     # Initialize components
     init = Initializator(get_api_key(args.api_key, args.api_key_file), get_proxy(args.proxy), str(args.case_id or 0).zfill(6))
-
+    time1 = datetime.now()
     # Read values from input file
     values = ValueReader(args.input_file, args.values).read_values()
     if not values:
         logging.info("No values to analyze.")
         return
-
     # Analyze each value type
     for value_type in types:
+        
         if not values[value_type]:
             logging.info(f"No {value_type} to analyze.")
             continue
@@ -113,9 +113,14 @@ def analyze_values(args, types):
             process_results(init, results, value_type)
         else:
             logging.info(f"No {value_type} to analyze.")
-
+    csvfilescreated = list(set(init.output.csvfilescreated))
     logging.info("Analysis completed.")
     close_resources(init)
+    time2 = datetime.now()
+    total = time2 - time1
+    logging.info(f"Analysis completed in {total} !")
+    print("Thank you for using VT Tools ! ")
+    misp_choice(case_str=str(args.case_id or 0).zfill(6),csvfilescreated=csvfilescreated)
 
 def analyze_value_type(init, value_type, values):
     results = []
@@ -154,7 +159,7 @@ def process_results(init, results, value_type):
                 header_rows.append(row[0])
             value_rows.append(row[1:])
 
-    table = PrettyTable(header_rows, value_rows)
+    table = cpt(header_rows, value_rows)
     strtable = table.create_table()
 
     total_csv_report = [result["csv_report"] for result in results]
