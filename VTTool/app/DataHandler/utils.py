@@ -83,12 +83,13 @@ def get_user_choice():
         mapping = {"ip": "ips", "i": "ips", "domain": "domains", "d": "domains", "url": "urls", "u": "urls", "hash": "hashes", "h": "hashes"}
         choice = input("Which type do you want to analyze? (ip/domain/url/hash): ").strip().lower()
         value_type = mapping.get(choice)
+        value_type = [value_type]
         if not value_type:
             print("Invalid choice. Defaulting to all types.")
     elif choice == "n":
-        value_type = None
+        value_type = ["ips", "domains", "urls", "hashes"]
     else:
         print("Invalid choice. Defaulting to all types.")
-        value_type = None
+        value_type = ["ips", "domains", "urls", "hashes"]
     
     return value_type

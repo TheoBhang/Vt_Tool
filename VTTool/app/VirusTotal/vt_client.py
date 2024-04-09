@@ -43,3 +43,5 @@ class VirusTotalClient:
             # Handle other exceptions
             print(f"Unexpected error initializing VirusTotal client: {e}")
             return None
+
+        

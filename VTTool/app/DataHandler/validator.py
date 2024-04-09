@@ -46,7 +46,6 @@ class DataValidator:
         tuple: The IP version (IPv4) and the type of the IP address (one of "Public", "Reserved", "Private", or None).
         """
         ip_type = None  # Initialize the type to None
-
         try:
             ip_address = ipaddress.IPv4Address(ip)
             if ip_address.is_private:
@@ -156,7 +155,6 @@ class DataValidator:
         str: The type of the IP address ('Public', 'Reserved', 'Private', 'Unspecified', 'Loopback', 'Link-local', 'Multicast', or None).
         """
         ip_type = None
-
         if self.is_valid_ip_address(ip):
             ip_version = self.get_ip_version(ip)
             if ip_version == 'IPv4':

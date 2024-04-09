@@ -11,7 +11,7 @@ class Pattern:
     pattern_ip = re.compile(
         r'(?:^|\s)((?:[0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|'
         r'(?:[0-9a-fA-F]{1,4}:){1,7}:|'
-        r'(([0-9a-fA-F]{1,4}:){1,6}|:):(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.'
+        r'(?:(?:[0-9a-fA-F]{1,4}:){1,6}|:):(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.'
         r'(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.'
         r'(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.'
         r'(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|'
@@ -228,7 +228,7 @@ class ValueReader:
 
         # Extract domain values
         domains = combined_values['domains']
-        combined_values['domains'] = [domain for domain in domains if not self._matches_filename(domain)]
+        combined_values['domains'] = [domain for domain in domains if not ValueExtractor()._matches_filename(domain)]
 
         # Create dictionary of results
         results = {
