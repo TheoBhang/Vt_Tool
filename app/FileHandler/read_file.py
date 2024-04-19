@@ -102,7 +102,6 @@ class ValueExtractor:
             self.dict_values_file = values_dict
         else:
             self.dict_values = values_dict
-
         return values_dict
 
     def _matches_filename(self, domain):

@@ -67,7 +67,7 @@ def get_proxy(proxy: str = None) -> str:
     # No proxy provided, print error and return None
     else:
         print("No Proxy provided.")
-        return "No proxy found"
+        return ""
     
 def get_user_choice():
     """

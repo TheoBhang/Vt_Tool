@@ -26,7 +26,9 @@ class VTReporter:
             IPV4_PUBLIC_TYPE: f"/ip_addresses/{value}",
             "DOMAIN": f"/domains/{value}",
             "URL": f"/urls/{url_id(value)}",
-            "SHA-256": f"/files/{value}"
+            "SHA-256": f"/files/{value}",
+            "SHA-1": f"/files/{value}",
+            "MD5": f"/files/{value}"
         }
 
         # Initialize report
@@ -78,6 +80,11 @@ class VTReporter:
             elif value_type == "URL":
                 self.populate_url_data(value_object, value, report)
             elif value_type == "SHA-256":
+                self.populate_sha256_data(value_object, value, report)
+            elif value_type == "SHA-1":
+                self.populate_sha256_data(value_object, value, report)
+            elif value_type == "MD5":
+                print("MD5")
                 self.populate_sha256_data(value_object, value, report)
 
         return value_object
@@ -136,11 +143,12 @@ class VTReporter:
 
     def populate_sha256_data(self, value_object, value, report):
         value_object.update({
-            "Hash (Sha256)": value,
+            "Hash": value,
             "extension": getattr(report, 'type_extension', 'No extension found'),
             "Size (Bytes)": getattr(report, 'size', 'No size found'),
             "md5": getattr(report, 'md5', 'No md5 found'),
             "sha1": getattr(report, 'sha1', 'No sha1 found'),
+            "sha256": getattr(report, 'sha256', 'No sha256 found'),
             "ssdeep": getattr(report, 'ssdeep', 'No ssdeep found'),
             "tlsh": getattr(report, 'tlsh', 'No tlsh found'),
             "names": ", ".join(getattr(report, 'names', 'No names found')),

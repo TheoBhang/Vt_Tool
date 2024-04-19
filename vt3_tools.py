@@ -141,7 +141,7 @@ def analyze_value(init, value_type, value):
         value_type_str = validator_func(value)
         
     if value_type_str:
-        if value_type_str not in ["Private IPv4", "Loopback IPv4", "Unspecified IPv4", "Link-local IPv4", "Reserved IPv4", "MD5","SHA-1","SHA-224","SHA-384","SHA-512", "SSDEEP"]:
+        if value_type_str not in ["Private IPv4", "Loopback IPv4", "Unspecified IPv4", "Link-local IPv4", "Reserved IPv4","SHA-224","SHA-384","SHA-512", "SSDEEP"]:
             try:
                 return init.reporter.get_report(value_type_str.upper(), value)
             except Exception as e:

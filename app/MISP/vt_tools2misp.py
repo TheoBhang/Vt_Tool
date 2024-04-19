@@ -43,7 +43,10 @@ def process_csv_file(csv_file):
     with open(csv_file, newline='') as f:
         reader = csv.DictReader(f, delimiter=";")
         for row in reader:
-            data.append(row)
+            try:
+                data.append(row)
+            except Exception as e:
+                logger.error(f"Failed to process row: {e}")
     return data
 
 def create_misp_objects_from_csv(data, object_name):
@@ -56,12 +59,19 @@ def create_misp_objects_from_csv(data, object_name):
     """
     misp_objects = []
     for row in data:
-        misp_object = pymisp.MISPObject(name=object_name)
-        for key, value in row.items():
-            attribute_type = get_misp_attribute_type(key)
-            if attribute_type:
-                misp_object.add_attribute(key, value=value, type=attribute_type)
-        misp_objects.append(misp_object)
+        try:
+            misp_object = pymisp.MISPObject(name=object_name)
+            for key, value in row.items():
+                try:
+                    attribute_type = get_misp_attribute_type(key)
+                    if attribute_type:
+                        misp_object.add_attribute(key, value=value, type=attribute_type)
+                except Exception as e:
+                    logger.error(f"Failed to add attribute to MISP object: {e}")
+            misp_objects.append(misp_object)
+        except Exception as e:
+            logger.error(f"Failed to create MISP object: {e}")
+            logger.info("Skipping to the next row...")
     return misp_objects
 
 def get_misp_object_name(csv_file):
@@ -113,15 +123,18 @@ def process_and_submit_to_misp(misp, case_str, csv_files_created):
     misp_event = get_misp_event(misp, case_str)
     print(f"Using MISP event {misp_event.id} for submission")
     for csv_file in csv_files_created:
-        object_name = get_misp_object_name(csv_file)
-        data = process_csv_file(csv_file)
-        for _ in range(len(data)):
-            misp_objects = create_misp_objects_from_csv(data, object_name)
-            try:
-                misp.add_objects(misp_event, misp_objects)
-                misp.update_event(misp_event)
-            except Exception as e:
-                print(f"Failed to submit MISP objects: {e}")
+        try:
+            object_name = get_misp_object_name(csv_file)
+            data = process_csv_file(csv_file)
+            for _ in range(len(data)):
+                misp_objects = create_misp_objects_from_csv(data, object_name)
+                try:
+                    misp.add_objects(misp_event, misp_objects)
+                    misp.update_event(misp_event)
+                except Exception as e:
+                    print(f"Failed to submit MISP objects: {e}")
+        except Exception as e:
+            print(f"Failed to process CSV file: {e}")
 
 def submit_misp_objects(misp, misp_event, misp_objects):
     """
@@ -134,8 +147,10 @@ def submit_misp_objects(misp, misp_event, misp_objects):
     try:
         # Add MISP objects to the event
         for misp_object in misp_objects:
-            misp.add_object(misp_event.id, misp_object)
-        
+            try:
+                misp.add_object(misp_event.id, misp_object)
+            except Exception as e:
+                logging.error(f"Failed to add MISP object: {e}")
         # Update the event
         misp.update_event(misp_event)
 
@@ -172,6 +187,7 @@ def misp_event(case_str, csvfilescreated):
         logger.info("Exiting...")
     except Exception as e:
         logger.error(f"An error occurred: {e}")
+        logger.info("Exiting...")
         
 def misp_choice(case_str, csvfilescreated):
     """
@@ -185,7 +201,8 @@ def misp_choice(case_str, csvfilescreated):
         print("Yes (1, Y, yes)")
         print("No (2, N, no)")
         choice = input("Enter your choice: ").lower()
-
+        if case_str == "000000":
+            case_str = input("Please enter the MISP event ID: ")
         if choice in ["1", "y", "yes"]:
             misp_event(case_str, csvfilescreated)
         elif choice in ["2", "n", "no"]:
