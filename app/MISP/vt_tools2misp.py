@@ -6,11 +6,11 @@ import logging
 import warnings
 import pymisp
 
-# Disable warnings
+# Disable warnings from the VirusTotal API
 warnings.filterwarnings("ignore")
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.getLogger("Python").setLevel(logging.CRITICAL)
+logging.getLogger().setLevel(logging.CRITICAL)
 logger = logging.getLogger(__name__)
 
 def get_misp_event(misp, case_str):
@@ -86,7 +86,7 @@ def get_misp_object_name(csv_file):
     elif "URL" in csv_file:
         return "url"
     elif "IP" in csv_file:
-        return "ip"
+        return "domain-ip"
     elif "Domain" in csv_file:
         return "domain"
     else:
@@ -129,7 +129,7 @@ def process_and_submit_to_misp(misp, case_str, csv_files_created):
             for _ in range(len(data)):
                 misp_objects = create_misp_objects_from_csv(data, object_name)
                 try:
-                    misp.add_objects(misp_event, misp_objects)
+                    submit_misp_objects(misp, misp_event, misp_objects)
                     misp.update_event(misp_event)
                 except Exception as e:
                     print(f"Failed to submit MISP objects: {e}")

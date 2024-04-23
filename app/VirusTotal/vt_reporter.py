@@ -64,7 +64,7 @@ class VTReporter:
             "link": NO_LINK
         }
         
-        if report != NOT_FOUND_ERROR:
+        if report != NOT_FOUND_ERROR and report:
             total_scans = sum(report.last_analysis_stats.values())
             malicious = report.last_analysis_stats.get("malicious", 0)
             suspicious = report.last_analysis_stats.get("suspicious", 0)
@@ -80,12 +80,11 @@ class VTReporter:
             elif value_type == "URL":
                 self.populate_url_data(value_object, value, report)
             elif value_type == "SHA-256":
-                self.populate_sha256_data(value_object, value, report)
+                self.populate_hash_data(value_object, value, report)
             elif value_type == "SHA-1":
-                self.populate_sha256_data(value_object, value, report)
+                self.populate_hash_data(value_object, value, report)
             elif value_type == "MD5":
-                print("MD5")
-                self.populate_sha256_data(value_object, value, report)
+                self.populate_hash_data(value_object, value, report)
 
         return value_object
 
@@ -141,7 +140,7 @@ class VTReporter:
             }
         })
 
-    def populate_sha256_data(self, value_object, value, report):
+    def populate_hash_data(self, value_object, value, report):
         value_object.update({
             "Hash": value,
             "extension": getattr(report, 'type_extension', 'No extension found'),
