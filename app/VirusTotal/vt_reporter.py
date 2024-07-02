@@ -1,5 +1,6 @@
 from vt import url_id               # for interacting with urls in VirusTotal
 from app.DataHandler.utils import utc2local       # for converting UTC time to local time
+from app.DBHandler.db_handler import DBHandler
 
 IPV4_PUBLIC_TYPE = "PUBLIC IPV4"
 NOT_FOUND_ERROR = "Not found"
@@ -33,13 +34,11 @@ class VTReporter:
 
         # Initialize report
         report = None
-
-        # Get object from VirusTotal for the corresponding value type
         try:
             report = self.vt.get_object(api_endpoints.get(value_type))
         except Exception as e:
             if "NotFoundError" in str(e):
-                print(NOT_FOUND_ERROR)
+                print(f"{NOT_FOUND_ERROR} on VirusTotal Database : {value}")
             else:
                 raise e
 
@@ -57,10 +56,14 @@ class VTReporter:
         Returns:
         dict: The object for the value.
         """
+        database = "vttools.sqlite"
+        conn = DBHandler().create_connection(database)
         value_object = {
             "malicious_score": NOT_FOUND_ERROR,
             "suspicious_score": NOT_FOUND_ERROR,
             "safe_score": NOT_FOUND_ERROR,
+            "undetected_score": NOT_FOUND_ERROR,
+            "total_scans": NOT_FOUND_ERROR,
             "link": NO_LINK
         }
         
@@ -71,35 +74,39 @@ class VTReporter:
             undetected = report.last_analysis_stats.get("undetected", 0)
             harmless = report.last_analysis_stats.get("harmless", 0)
             self.populate_scores(value_object, total_scans, malicious, suspicious, undetected, harmless)
-            self.populate_link(value_object, value)
+            self.populate_link(value_object, value, value_type)
 
             if value_type == IPV4_PUBLIC_TYPE:
                 self.populate_ip_data(value_object, value, report)
+                DBHandler().insert_ip_data(conn, value_object)
             elif value_type == "DOMAIN":
                 self.populate_domain_data(value_object, value, report)
+                DBHandler().insert_domain_data(conn, value_object)
             elif value_type == "URL":
                 self.populate_url_data(value_object, value, report)
-            elif value_type == "SHA-256":
+                DBHandler().insert_url_data(conn, value_object)
+            elif value_type == "SHA-256" or value_type == "SHA-1" or value_type == "MD5":
                 self.populate_hash_data(value_object, value, report)
-            elif value_type == "SHA-1":
-                self.populate_hash_data(value_object, value, report)
-            elif value_type == "MD5":
-                self.populate_hash_data(value_object, value, report)
-
+                DBHandler().insert_hash_data(conn, value_object)
+    
         return value_object
 
     def populate_scores(self, value_object, total_scans, malicious, suspicious, undetected, harmless):
-        value_object["malicious_score"] = f"{malicious} \\ {total_scans}"
-        value_object["suspicious_score"] = f"{suspicious} \\ {total_scans}"
-        value_object["safe_score"] = f"{harmless} \\ {total_scans}"
-        value_object["undetected_score"] = f"{undetected} \\ {total_scans}"
+        value_object["malicious_score"] = malicious
+        value_object["suspicious_score"] = suspicious
+        value_object["safe_score"] = harmless
+        value_object["undetected_score"] = undetected
+        value_object["total_scans"] = total_scans
 
-    def populate_link(self, value_object, value):
-        value_object["link"] = f"https://www.virustotal.com/gui/search/{value}"
-
+    def populate_link(self, value_object, value, value_type):
+        if value_type == "URL":
+            value_object["link"] = f"https://www.virustotal.com/gui/url/{url_id(value)}"
+        else:
+            value_object["link"] = f"https://www.virustotal.com/gui/{value}"
+            
     def populate_ip_data(self, value_object, value, report):
         value_object.update({
-            "IP Address": value,
+            "ip": value,
             "owner": getattr(report, 'as_owner', 'No owner found'),
             "location": f"{report.continent} / {report.country}" if hasattr(report, 'continent') and hasattr(report, 'country') else NOT_FOUND_ERROR,
             "network": getattr(report, 'network', 'No network found'),
@@ -112,7 +119,7 @@ class VTReporter:
 
     def populate_domain_data(self, value_object, value, report):
         value_object.update({
-            "Domain": value,
+            "domain": value,
             "creation_date": getattr(report, 'creation_date', 'No creation date found'),
             "reputation": getattr(report, 'reputation', 'No reputation found'),
             "whois": getattr(report, 'whois', 'No whois found'),
@@ -127,7 +134,7 @@ class VTReporter:
 
     def populate_url_data(self, value_object, value, report):
         value_object.update({
-            "URL": value,
+            "url": value,
             "title": getattr(report, 'title', 'No Title Found'),
             "final_Url": getattr(report, 'last_final_url', 'No endpoints'),
             "first_scan": str(utc2local(getattr(report, 'first_submission_date', 'No date Found'))),
@@ -142,16 +149,16 @@ class VTReporter:
 
     def populate_hash_data(self, value_object, value, report):
         value_object.update({
-            "Hash": value,
+            "hash": value,
             "extension": getattr(report, 'type_extension', 'No extension found'),
-            "Size (Bytes)": getattr(report, 'size', 'No size found'),
+            "size": getattr(report, 'size', 'No size found'),
             "md5": getattr(report, 'md5', 'No md5 found'),
             "sha1": getattr(report, 'sha1', 'No sha1 found'),
             "sha256": getattr(report, 'sha256', 'No sha256 found'),
             "ssdeep": getattr(report, 'ssdeep', 'No ssdeep found'),
             "tlsh": getattr(report, 'tlsh', 'No tlsh found'),
             "names": ", ".join(getattr(report, 'names', 'No names found')),
-            "Type": report.trid[0]["file_type"] if hasattr(report, 'trid') else "No filetype Found",
+            "type": report.trid[0]["file_type"] if hasattr(report, 'trid') else "No filetype Found",
             "Type Probability": report.trid[0]["probability"] if hasattr(report, 'trid') else "No type probabilty"
         })
 
@@ -233,18 +240,20 @@ class VTReporter:
         """
         # Get the report for the value
         report = self.create_report(value_type, value)
+        if report:
+            # Generate CSV report
+            csv_report = self.csv_report(value_type, value, report)
 
-        # Generate CSV report
-        csv_report = self.csv_report(value_type, value, report)
+            # Get rows for the report
+            rows = self.get_rows(value_type, value, report)
 
-        # Get rows for the report
-        rows = self.get_rows(value_type, value, report)
+            # Construct the final results dictionary
+            results = {
+                "report": report,
+                "csv_report": csv_report,
+                "rows": rows
+            }
 
-        # Construct the final results dictionary
-        results = {
-            "report": report,
-            "csv_report": csv_report,
-            "rows": rows
-        }
-
-        return results
+            return results
+        else:
+            return None

@@ -4,3 +4,4 @@
 /V2
 .dockerignore
 .env
+.vttools.sqlite

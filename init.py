@@ -1,6 +1,7 @@
 from app.VirusTotal.vt_reporter import VTReporter
 from app.VirusTotal.vt_client import VirusTotalClient
 from app.DataHandler.validator import DataValidator
+from app.DBHandler.db_handler import DBHandler
 from app.FileHandler.output_to_file import OutputHandler
 
 class Initializator:
@@ -23,4 +24,5 @@ class Initializator:
         self.reporter = VTReporter(self.client)
         self.validator = DataValidator()
         self.output = OutputHandler(case_num)
+        self.db_handler = DBHandler()
 
