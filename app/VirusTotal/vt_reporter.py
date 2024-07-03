@@ -102,7 +102,7 @@ class VTReporter:
         if value_type == "URL":
             value_object["link"] = f"https://www.virustotal.com/gui/url/{url_id(value)}"
         else:
-            value_object["link"] = f"https://www.virustotal.com/gui/{value}"
+            value_object["link"] = f"https://www.virustotal.com/gui/search/{value}"
             
     def populate_ip_data(self, value_object, value, report):
         value_object.update({

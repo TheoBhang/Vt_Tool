@@ -11,11 +11,11 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS urls (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     url TEXT,
-    malicious_score INTEGER,
-    suspicious_score INTEGER,
-    safe_score INTEGER,
-    undetected_score INTEGER,
-    total_scans INTEGER,
+    malicious_score TEXT,
+    suspicious_score TEXT,
+    safe_score TEXT,
+    undetected_score TEXT,
+    total_scans TEXT,
     link TEXT,
     title TEXT,
     final_url TEXT,
@@ -30,11 +30,11 @@ CREATE TABLE IF NOT EXISTS urls (
 CREATE TABLE IF NOT EXISTS hashes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     hash TEXT,
-    malicious_score INTEGER,
-    suspicious_score INTEGER,
-    safe_score INTEGER,
-    undetected_score INTEGER,
-    total_scans INTEGER,
+    malicious_score TEXT,
+    suspicious_score TEXT,
+    safe_score TEXT,
+    undetected_score TEXT,
+    total_scans TEXT,
     link TEXT,
     extension TEXT,
     size TEXT,
@@ -51,11 +51,11 @@ CREATE TABLE IF NOT EXISTS hashes (
 CREATE TABLE IF NOT EXISTS ips (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ip TEXT,
-    malicious_score INTEGER,
-    suspicious_score INTEGER,
-    safe_score INTEGER,
-    undetected_score INTEGER,
-    total_scans INTEGER,
+    malicious_score TEXT,
+    suspicious_score TEXT,
+    safe_score TEXT,
+    undetected_score TEXT,
+    total_scans TEXT,
     link TEXT,
     owner TEXT,
     location TEXT,
@@ -68,11 +68,11 @@ CREATE TABLE IF NOT EXISTS ips (
 CREATE TABLE IF NOT EXISTS domains (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     domain TEXT,
-    malicious_score INTEGER,
-    suspicious_score INTEGER,
-    safe_score INTEGER,
-    undetected_score INTEGER,
-    total_scans INTEGER,
+    malicious_score TEXT,
+    suspicious_score TEXT,
+    safe_score TEXT,
+    undetected_score TEXT,
+    total_scans TEXT,
     link TEXT,
     creation_date TEXT,
     reputation TEXT,
@@ -112,7 +112,6 @@ class DBHandler:
         cur.execute("SELECT * FROM ips WHERE ip=?", (ip_data.get("ip"),))
         result = cur.fetchone()
         if result:
-            print("Entry already exists in the database.")
             return
         
         cur.execute(sql, (
@@ -141,7 +140,6 @@ class DBHandler:
         cur.execute("SELECT * FROM domains WHERE domain=?", (domain_data.get("domain"),))
         result = cur.fetchone()
         if result:
-            print("Entry already exists in the database.")
             return
         
         cur.execute(sql, (
@@ -172,7 +170,6 @@ class DBHandler:
         cur.execute("SELECT * FROM urls WHERE url=?", (url_data.get("url"),))
         result = cur.fetchone()
         if result:
-            print("Entry already exists in the database.")
             return
         
         
@@ -205,7 +202,6 @@ class DBHandler:
         cur.execute("SELECT * FROM hashes WHERE hash=?", (hash_data.get("hash"),))
         result = cur.fetchone()
         if result:
-            print("Entry already exists in the database.")
             return
         
         cur.execute(sql, (
@@ -364,7 +360,7 @@ class DBHandler:
         if value_type == "URL":
             value_object["link"] = f"https://www.virustotal.com/gui/url/{url_id(value)}"
         else:
-            value_object["link"] = f"https://www.virustotal.com/gui/{value}"
+            value_object["link"] = f"https://www.virustotal.com/gui/search/{value}"
             
     def populate_ip_data(self,value_object, value, report):
         value_object.update({
