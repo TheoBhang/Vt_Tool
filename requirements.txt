@@ -6,3 +6,4 @@ ipaddress
 python-dotenv
 pymisp
 urllib3
+rich

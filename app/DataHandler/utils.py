@@ -1,5 +1,11 @@
 from datetime import timezone     # for working with dates and times
 import os                           # for interacting with the operating system
+from rich.console import Console
+from rich.prompt import Prompt, InvalidResponse
+from rich.table import Table
+from rich.text import Text
+
+console = Console()
 
 def utc2local(utc):
     """
@@ -69,27 +75,70 @@ def get_proxy(proxy: str = None) -> str:
         print("No Proxy provided.")
         return ""
     
-def get_user_choice():
+def display_menu():
     """
-    Get the user's choice.
+    Display the analysis type menu.
+    """
+    table = Table(title="Analysis Types", title_style="bold yellow")
+    table.add_column("Key", justify="center", style="cyan", no_wrap=True)
+    table.add_column("Type", justify="center", style="magenta")
+
+    options = {
+        "1": "IPs",
+        "2": "Domains",
+        "3": "URLs",
+        "4": "Hashes"
+    }
+
+    for key, value in options.items():
+        table.add_row(key, value)
+
+    console.print(table)
+
+def get_initial_choice():
+    """
+    Get the initial choice from the user.
 
     Returns:
-    str: The user's choice.
+    str: The user's initial choice (y/n).
     """
-    # Get the user's choice
-    choice = input("Do you want to analyze a particular type? (y/n): ").strip().lower()
+    return Prompt.ask(
+        "[bold]Do you want to analyze a particular type? (y/n)[/bold]",
+        choices=["y", "n", "yes", "no", "Y", "N"],
+        default="n"
+    ).strip().lower()
 
-    if choice == "y":
-        mapping = {"ip": "ips", "i": "ips", "domain": "domains", "d": "domains", "url": "urls", "u": "urls", "hash": "hashes", "h": "hashes"}
-        choice = input("Which type do you want to analyze? (ip/domain/url/hash): ").strip().lower()
+def get_analysis_type():
+    """
+    Get the analysis type from the user.
+
+    Returns:
+    str: The analysis type selected by the user.
+    """
+    while True:
+        display_menu()
+        choice = Prompt.ask("[bold]Which type do you want to analyze? [/bold]").strip().lower()
+        mapping = {"1": "ips", "2": "domains", "3": "urls", "4": "hashes"}
         value_type = mapping.get(choice)
-        value_type = [value_type]
-        if not value_type:
-            print("Invalid choice. Defaulting to all types.")
-    elif choice == "n":
-        value_type = ["ips", "domains", "urls", "hashes"]
-    else:
-        print("Invalid choice. Defaulting to all types.")
-        value_type = ["ips", "domains", "urls", "hashes"]
-    
-    return value_type
+        if value_type:
+            return value_type
+        console.print("[bold red]Invalid choice. Please select a valid type.[/bold red]")
+
+def get_user_choice():
+    """
+    Get the user's choice and return the selected value types.
+
+    Returns:
+    list: The selected value types.
+    """
+    try:
+        choice = get_initial_choice()
+
+        if choice == "y":
+            value_type = get_analysis_type()
+            return [value_type]
+        return ["ips", "domains", "urls", "hashes"]
+
+    except InvalidResponse:
+        console.print("[bold red]Invalid response. Defaulting to all types.[/bold red]")
+        return ["ips", "domains", "urls", "hashes"]

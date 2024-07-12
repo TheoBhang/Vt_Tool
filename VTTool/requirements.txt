@@ -2,3 +2,4 @@ cortexutils
 setuptools
 vt-py
 ipaddress
+rich

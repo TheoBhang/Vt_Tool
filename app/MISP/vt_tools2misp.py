@@ -1,11 +1,15 @@
 import csv
-import os
-import logging
+from rich.console import Console
+from rich.prompt import Prompt
+from rich.text import Text
+from pymisp import ExpandedPyMISP
 import warnings
+import logging
+import os
 import re
 from pymisp import ExpandedPyMISP, MISPObject, MISPEvent
 
-
+console = Console()
 def get_misp_event(misp, case_str):
     """
     Get or create a MISP event for the given case string.
@@ -102,13 +106,14 @@ def process_and_submit_to_misp(misp, case_str, csv_files_created):
         'link': ('link', 'link', 'External analysis', False, ['tlp:white']),
         'url': ('url', 'url', 'Network activity', False, ['tlp:green']),
         'title': ('title', 'text', 'Other', False, ['tlp:white']),
-        'final_Url': ('final_Url', 'link', 'Other', False, ['tlp:white']),
+        'final_Url': ('final_Url', 'text', 'Other', False, ['tlp:white']),
         'first_scan': ('first_scan', 'datetime', 'Other', False, ['tlp:white']),
         'info': ('info', 'text', 'Other', False, ['tlp:white']),
         'sha256': ('sha256', 'sha256', 'Payload delivery', False, ['tlp:green']),
         'md5': ('md5', 'md5', 'Payload delivery', False, ['tlp:white']),
         'sha1': ('sha1', 'sha1', 'Payload delivery', False, ['tlp:white']),
         'ssdeep': ('ssdeep', 'ssdeep', 'Payload delivery', False, ['tlp:white']),
+        'tlsh': ('tlsh', 'tlsh', 'Payload delivery', False, ['tlp:white']),
         'size': ('size', 'size-in-bytes', 'Payload delivery', False, ['tlp:white'])
     }
 
@@ -146,47 +151,49 @@ def misp_event(case_str, csvfilescreated):
     # Disable warnings from the VirusTotal API
     warnings.filterwarnings("ignore")
 
+    # Set logging levels to suppress output
     logging.getLogger("Python").setLevel(logging.CRITICAL)
     logging.getLogger().setLevel(logging.CRITICAL)
     # Suppress specific PyMISP warnings related to object templates
     warnings.filterwarnings("ignore", category=UserWarning, message="The template .* doesn't have the object_relation .*")
 
     try:
-        print("Initializing MISP connection...")
+        console.print("[bold]Initializing MISP connection...[/bold]")
         misp_key = os.getenv("MISPKEY")
         misp_url = os.getenv("MISPURL")
 
         if not misp_key:
-            misp_key = input("Enter your MISP key: ")
+            misp_key = Prompt.ask("[bold]Enter your MISP key[/bold]")
         if not misp_url:
-            misp_url = input("Enter your MISP URL: ")
+            misp_url = Prompt.ask("[bold]Enter your MISP URL[/bold]")
 
         misp = ExpandedPyMISP(misp_url, misp_key, False)
-        print("MISP connection established successfully.")
+        console.print("[bold green]MISP connection established successfully.[/bold green]")
         process_and_submit_to_misp(misp, case_str, csvfilescreated)
     except KeyboardInterrupt:
-        print("Exiting...")
+        console.print("[bold red]Exiting...[/bold red]")
     except Exception as e:
-        print(f"An error occurred: {e}")
-        print("Exiting...")
+        console.print(f"[bold red]An error occurred: {e}[/bold red]")
+        console.print("[bold red]Exiting...[/bold red]")
 
 def misp_choice(case_str, csvfilescreated):
     """
     Ask the user if they want to send the results to MISP and proceed accordingly.
     """
     try:
-        print("Do you want to send the results to MISP?")
-        print("Yes (1, Y, yes)")
-        print("No (2, N, no)")
-        choice = input("Enter your choice: ").lower()
+        console.print("[bold]Do you want to send the results to MISP?[/bold]")
+        console.print("- Yes (1, Y, yes)")
+        console.print("- No (2, N, no)")
+        choice = Prompt.ask("[bold]Enter your choice[/bold]").strip().lower()
+        
         if choice in ["1", "y", "yes"]:
             if case_str == "000000":
-                case_str = input("Please enter the MISP event ID: ")
+                case_str = Prompt.ask("[bold]Please enter the MISP event ID[/bold]")
             misp_event(case_str, csvfilescreated)
         elif choice in ["2", "n", "no"]:
-            print("MISP event not created.")
+            console.print("[bold yellow]MISP event not created.[/bold yellow]")
         else:
-            print("Invalid choice. Please try again.")
+            console.print("[bold red]Invalid choice. Please try again.[/bold red]")
             misp_choice(case_str, csvfilescreated)
     except KeyboardInterrupt:
-        print("Exiting...")
+        console.print("[bold red]Exiting...[/bold red]")
