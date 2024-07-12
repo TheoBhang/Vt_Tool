@@ -95,9 +95,9 @@ def process_and_submit_to_misp(misp, case_str, csv_files_created):
     attribute_type_mapping = {
         'ip': ('ip-src', 'ip-src', 'Network activity', False, ['tlp:green']),
         'malicious_score': ('malicious_score', 'text', 'Antivirus detection', False, ['tlp:white']),
-        'suspicious_score': ('suspicious_score', 'text', 'Antivirus detection', False, ['tlp:white']),
-        'safe_score': ('safe_score', 'text', 'Antivirus detection', False, ['tlp:white']),
-        'undetected_score': ('undetected_score', 'text', 'Antivirus detection', False, ['tlp:white']),
+        #'suspicious_score': ('suspicious_score', 'text', 'Antivirus detection', False, ['tlp:white']),
+        #'safe_score': ('safe_score', 'text', 'Antivirus detection', False, ['tlp:white']),
+        #'undetected_score': ('undetected_score', 'text', 'Antivirus detection', False, ['tlp:white']),
         'owner': ('owner', 'text', 'Other', False, ['tlp:white']),
         'location': ('location', 'text', 'Other', False, ['tlp:white']),
         'network': ('network', 'text', 'Other', False, ['tlp:white']),
