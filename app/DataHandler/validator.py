@@ -23,10 +23,10 @@ class DataValidator:
     """
 
     def __init__(self):
-        self.pattern_ip = Pattern.pattern_ip
-        self.pattern_url = Pattern.pattern_url
-        self.pattern_hash = Pattern.pattern_hash
-        self.pattern_domain = Pattern.pattern_domain
+        self.pattern_ip = Pattern.PATTERN_API
+        self.pattern_url = Pattern.PATTERN_URL
+        self.pattern_hash = Pattern.PATTERN_HASH
+        self.pattern_domain = Pattern.PATTERN_DOMAIN
         self.hash_regex = r"(?i)^([a-f0-9]{32}|[a-f0-9]{40}|[a-f0-9]{56}|[a-f0-9]{64}|[a-f0-9]{96}|[a-f0-9]{128})$"
         self.ssdeep_regex = r"(?i)^[0-9]+:[a-zA-Z0-9/+]{1,}:[a-zA-Z0-9/+]{1,}$"
         self.empty_md5 = "d41d8cd98f00b204e9800998ecf8427e"
