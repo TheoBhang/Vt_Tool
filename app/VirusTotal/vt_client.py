@@ -1,5 +1,6 @@
 import vt  # for interacting with VirusTotal API V3
 
+
 class VirusTotalClient:
     """
     A class for interacting with the VirusTotal API.
@@ -43,5 +44,3 @@ class VirusTotalClient:
             # Handle other exceptions
             print(f"Unexpected error initializing VirusTotal client: {e}")
             return None
-
-        

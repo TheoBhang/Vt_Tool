@@ -1,11 +1,13 @@
-from datetime import timezone     # for working with dates and times
-import os                           # for interacting with the operating system
+import os  # for interacting with the operating system
+from datetime import timezone  # for working with dates and times
+
 from rich.console import Console
-from rich.prompt import Prompt, InvalidResponse
+from rich.prompt import InvalidResponse, Prompt
 from rich.table import Table
 from rich.text import Text
 
 console = Console()
+
 
 def utc2local(utc):
     """
@@ -18,6 +20,7 @@ def utc2local(utc):
     datetime: The local time.
     """
     return utc.replace(tzinfo=timezone.utc).astimezone(tz=None)
+
 
 def get_api_key(api_key: str = None, api_key_file: str = None) -> str:
     """
@@ -52,6 +55,7 @@ def get_api_key(api_key: str = None, api_key_file: str = None) -> str:
         print("No API key provided.")
         exit()
 
+
 def get_proxy(proxy: str = None) -> str:
     """
     Get the proxy.
@@ -74,7 +78,8 @@ def get_proxy(proxy: str = None) -> str:
     else:
         print("No Proxy provided.")
         return ""
-    
+
+
 def display_menu():
     """
     Display the analysis type menu.
@@ -83,17 +88,13 @@ def display_menu():
     table.add_column("Key", justify="center", style="cyan", no_wrap=True)
     table.add_column("Type", justify="center", style="magenta")
 
-    options = {
-        "1": "IPs",
-        "2": "Domains",
-        "3": "URLs",
-        "4": "Hashes"
-    }
+    options = {"1": "IPs", "2": "Domains", "3": "URLs", "4": "Hashes"}
 
     for key, value in options.items():
         table.add_row(key, value)
 
     console.print(table)
+
 
 def get_initial_choice():
     """
@@ -102,11 +103,16 @@ def get_initial_choice():
     Returns:
     str: The user's initial choice (y/n).
     """
-    return Prompt.ask(
-        "[bold]Do you want to analyze a particular type? (y/n)[/bold]",
-        choices=["y", "n", "yes", "no", "Y", "N"],
-        default="n"
-    ).strip().lower()
+    return (
+        Prompt.ask(
+            "[bold]Do you want to analyze a particular type? (y/n)[/bold]",
+            choices=["y", "n", "yes", "no", "Y", "N"],
+            default="n",
+        )
+        .strip()
+        .lower()
+    )
+
 
 def get_analysis_type():
     """
@@ -117,12 +123,19 @@ def get_analysis_type():
     """
     while True:
         display_menu()
-        choice = Prompt.ask("[bold]Which type do you want to analyze? [/bold]").strip().lower()
+        choice = (
+            Prompt.ask("[bold]Which type do you want to analyze? [/bold]")
+            .strip()
+            .lower()
+        )
         mapping = {"1": "ips", "2": "domains", "3": "urls", "4": "hashes"}
         value_type = mapping.get(choice)
         if value_type:
             return value_type
-        console.print("[bold red]Invalid choice. Please select a valid type.[/bold red]")
+        console.print(
+            "[bold red]Invalid choice. Please select a valid type.[/bold red]"
+        )
+
 
 def get_user_choice():
     """

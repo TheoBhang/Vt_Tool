@@ -2,6 +2,7 @@ import csv
 from datetime import datetime
 from typing import Dict, List
 
+
 class OutputHandler:
     """
     A class for outputting data to files (CSV / TXT).
@@ -16,6 +17,7 @@ class OutputHandler:
         output_to_txt(data, value_type): Output data to a TXT file.
 
     """
+
     def __init__(self, case_num: str):
         self.case_num = case_num
         self.csvfilescreated = []
@@ -38,7 +40,7 @@ class OutputHandler:
             "IP": "IP_Analysis",
             "HASH": "Hashes_Analysis",
             "URL": "URL_Analysis",
-            "DOMAIN": "Domains_Analysis"
+            "DOMAIN": "Domains_Analysis",
         }
         file_name_suffix = file_name_suffixes.get(value_type)
 
@@ -63,9 +65,10 @@ class OutputHandler:
         """
         file_path = self._get_file_path(value_type)
         try:
-            with open(file_path, 'w', newline='') as data_file:
+            with open(file_path, "w", newline="") as data_file:
                 csv_writer = csv.DictWriter(
-                    data_file, fieldnames=data[0][0].keys(), delimiter=',')
+                    data_file, fieldnames=data[0][0].keys(), delimiter=","
+                )
                 csv_writer.writeheader()
                 for obj in data:
                     csv_writer.writerow(obj[0])

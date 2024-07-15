@@ -1,10 +1,10 @@
-import re                           # for working with regular expressions
-import sys                          # for interacting with the Python interpreter
-from collections import defaultdict # for creating a dictionary of values
+import re  # for working with regular expressions
+import sys  # for interacting with the Python interpreter
+from collections import defaultdict  # for creating a dictionary of values
 from dataclasses import dataclass
-from typing import Pattern as RePattern, List
-
 from typing import Dict, List
+from typing import Pattern as RePattern
+
 
 @dataclass(frozen=True)
 class Pattern:
@@ -13,31 +13,31 @@ class Pattern:
     """
 
     PATTERN_IP: RePattern = re.compile(
-        r'(?:^|\s)((?:[0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|'
-        r'(?:[0-9a-fA-F]{1,4}:){1,7}:|'
-        r'(?:(?:[0-9a-fA-F]{1,4}:){1,6}|:):(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.'
-        r'(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.'
-        r'(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.'
-        r'(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|'
-        r'(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))|(?:\s|$)'
+        r"(?:^|\s)((?:[0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|"
+        r"(?:[0-9a-fA-F]{1,4}:){1,7}:|"
+        r"(?:(?:[0-9a-fA-F]{1,4}:){1,6}|:):(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\."
+        r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\."
+        r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\."
+        r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|"
+        r"(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))|(?:\s|$)"
     )
     PATTERN_URL: RePattern = re.compile(
-        r'(?:https?://|www\.)'                 # Protocol (http://, https://, or www.)
-        r'(?:[\da-z\.-]+)\.[a-z]{2,6}'          # Domain name
-        r'(?::\d{1,5})?'                        # Port (optional)
-        r'(?:/[^\s]*)?'                         # Path (optional)
+        r"(?:https?://|www\.)"  # Protocol (http://, https://, or www.)
+        r"(?:[\da-z\.-]+)\.[a-z]{2,6}"  # Domain name
+        r"(?::\d{1,5})?"  # Port (optional)
+        r"(?:/[^\s]*)?"  # Path (optional)
     )
     PATTERN_HASH: RePattern = re.compile(
-        r'\b([a-fA-F0-9]{32}|[a-fA-F0-9]{40}|[a-fA-F0-9]{64})\b'
+        r"\b([a-fA-F0-9]{32}|[a-fA-F0-9]{40}|[a-fA-F0-9]{64})\b"
     )
     PATTERN_DOMAIN: RePattern = re.compile(
-        r'(?:[a-zA-Z0-9](?:[-a-zA-Z0-9]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}\b'
+        r"(?:[a-zA-Z0-9](?:[-a-zA-Z0-9]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}\b"
     )
     PATTERN_FILENAME: RePattern = re.compile(
-        r'\b\w+(?:-\w+)*\.(?:7z|accdb|accde|activedirectory|adoc|ai|asciidoc|automatic|avi|awk|bat|bmp|bz2|c|class|cfg|cnf|coffee|conf|cpp|csv|dart|db|dbf|dit|dll|doc|docm|docx|dotm|dotx|eps|env|exe|fish|gif|go|graphql|graphqls|gql|gqls|gz|html|htm|hpp|ini|inf|iso|jar|java|jpeg|jpg|js|json|less|log|lua|markdown|md|mde|mkv|mov|mp3|mp4|odg|odp|ods|odt|ogv|one|onepkg|onetmp|onetoc|onetoc2|odc|odf|odft|odg|odi|odm|odp|ods|odt|ogg|ogv|old|one|onepkg|onetmp|onetoc|onetoc2|otg|otp|ots|ott|pdf|php|pl|png|potm|potx|ppam|ppsm|ppt|pptm|pptx|ps1|psd1|psm1|psd|pub|py|q2k|rar|rb|reg|rst|rs|rtf|rvices|sass|scss|sed|sh|sldm|sql|stealthbits|svg|swift|sys|tar|tex|thmx|tif|tiff|toml|ts|tsx|ttf|txt|um|vb|vbs|vcd|vsdx|vssx|vstx|wav|webm|wmv|woff|woff2|xls|xlsx|xlsm|xltm|xml|xps|yaml|yml|zip)\b'
+        r"\b\w+(?:-\w+)*\.(?:7z|accdb|accde|activedirectory|adoc|ai|asciidoc|automatic|avi|awk|bat|bmp|bz2|c|class|cfg|cnf|coffee|conf|cpp|csv|dart|db|dbf|dit|dll|doc|docm|docx|dotm|dotx|eps|env|exe|fish|gif|go|graphql|graphqls|gql|gqls|gz|html|htm|hpp|ini|inf|iso|jar|java|jpeg|jpg|js|json|less|log|lua|markdown|md|mde|mkv|mov|mp3|mp4|odg|odp|ods|odt|ogv|one|onepkg|onetmp|onetoc|onetoc2|odc|odf|odft|odg|odi|odm|odp|ods|odt|ogg|ogv|old|one|onepkg|onetmp|onetoc|onetoc2|otg|otp|ots|ott|pdf|php|pl|png|potm|potx|ppam|ppsm|ppt|pptm|pptx|ps1|psd1|psm1|psd|pub|py|q2k|rar|rb|reg|rst|rs|rtf|rvices|sass|scss|sed|sh|sldm|sql|stealthbits|svg|swift|sys|tar|tex|thmx|tif|tiff|toml|ts|tsx|ttf|txt|um|vb|vbs|vcd|vsdx|vssx|vstx|wav|webm|wmv|woff|woff2|xls|xlsx|xlsm|xltm|xml|xps|yaml|yml|zip)\b"
     )
-    PATTERN_REMOVE: RePattern = re.compile(r'(?:[0-9.]{1,256}\.[0-9]{1,6}\b)(?:[0-9]*)')
-    PATTERN_API: RePattern = re.compile(r'[a-zA-Z\d]{32,}$')
+    PATTERN_REMOVE: RePattern = re.compile(r"(?:[0-9.]{1,256}\.[0-9]{1,6}\b)(?:[0-9]*)")
+    PATTERN_API: RePattern = re.compile(r"[a-zA-Z\d]{32,}$")
 
     def match_ip(self, text: str) -> List[str]:
         """Match IP addresses in the given text."""
@@ -73,21 +73,21 @@ class ValueExtractor:
         self.pattern_hash = Pattern.PATTERN_HASH
         self.pattern_ip = Pattern.PATTERN_IP
         self.pattern_url = Pattern.PATTERN_URL
-        
+
         # Dictionaries to store extracted values
         self.dict_values: Dict[str, List[str]] = {
-            'ips': [],
-            'urls': [],
-            'hashes': [],
-            'domains': [],
-            'keys': []
+            "ips": [],
+            "urls": [],
+            "hashes": [],
+            "domains": [],
+            "keys": [],
         }
         self.dict_values_file: Dict[str, List[str]] = {
-            'ips': [],
-            'urls': [],
-            'hashes': [],
-            'domains': [],
-            'keys': []
+            "ips": [],
+            "urls": [],
+            "hashes": [],
+            "domains": [],
+            "keys": [],
         }
 
     def sort_values(self, value: str, is_file: bool) -> Dict[str, List[str]]:
@@ -104,22 +104,28 @@ class ValueExtractor:
         values_dict = self.dict_values_file if is_file else self.dict_values
 
         # Extract values using regular expressions
-        values_dict['ips'].extend(self.pattern_ip.findall(value))
-        values_dict['urls'].extend(self.pattern_url.findall(value))
-        values_dict['hashes'].extend(self.pattern_hash.findall(value))
-        values_dict['domains'].extend(self.pattern_domain.findall(value))
-        values_dict['keys'].extend(self.pattern_api.findall(value))
+        values_dict["ips"].extend(self.pattern_ip.findall(value))
+        values_dict["urls"].extend(self.pattern_url.findall(value))
+        values_dict["hashes"].extend(self.pattern_hash.findall(value))
+        values_dict["domains"].extend(self.pattern_domain.findall(value))
+        values_dict["keys"].extend(self.pattern_api.findall(value))
 
         # Clean up domain names
-        values_dict['domains'] = [domain.replace("www.", "") for domain in values_dict['domains']]
-        values_dict['domains'] = [domain for domain in values_dict['domains'] if not self._matches_filename(domain)]
+        values_dict["domains"] = [
+            domain.replace("www.", "") for domain in values_dict["domains"]
+        ]
+        values_dict["domains"] = [
+            domain
+            for domain in values_dict["domains"]
+            if not self._matches_filename(domain)
+        ]
 
         # Update class dictionaries with extracted values
         if is_file:
             self.dict_values_file = values_dict
         else:
             self.dict_values = values_dict
-        
+
         return values_dict
 
     def _matches_filename(self, domain: str) -> bool:
@@ -215,12 +221,16 @@ class ValueReader:
             combined_values[key] = list(set(filter(None, combined_values[key])))
 
         # Extract domain values and filter filenames
-        domains = combined_values['domains']
-        combined_values['domains'] = [domain for domain in domains if not ValueExtractor()._matches_filename(domain)]
+        domains = combined_values["domains"]
+        combined_values["domains"] = [
+            domain
+            for domain in domains
+            if not ValueExtractor()._matches_filename(domain)
+        ]
 
         return {
-            "ips": combined_values['ips'],
-            "urls": combined_values['urls'],
-            "hashes": combined_values['hashes'],
-            "domains": combined_values['domains'],
+            "ips": combined_values["ips"],
+            "urls": combined_values["urls"],
+            "hashes": combined_values["hashes"],
+            "domains": combined_values["domains"],
         }

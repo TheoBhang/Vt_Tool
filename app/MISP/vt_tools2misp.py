@@ -1,15 +1,17 @@
 import csv
-from rich.console import Console
-from rich.prompt import Prompt
-from rich.text import Text
-from pymisp import ExpandedPyMISP
-import warnings
 import logging
 import os
 import re
-from pymisp import ExpandedPyMISP, MISPObject, MISPEvent
+import warnings
+
+from pymisp import ExpandedPyMISP, MISPEvent, MISPObject
+from rich.console import Console
+from rich.prompt import Prompt
+from rich.text import Text
 
 console = Console()
+
+
 def get_misp_event(misp, case_str):
     """
     Get or create a MISP event for the given case string.
@@ -24,12 +26,13 @@ def get_misp_event(misp, case_str):
     misp_event.load(event)
     return misp_event
 
+
 def process_csv_file(csv_file):
     """
     Process data from a CSV file.
     """
     data = []
-    with open(csv_file, newline='') as f:
+    with open(csv_file, newline="") as f:
         reader = csv.DictReader(f, delimiter=",")
         for row in reader:
             try:
@@ -37,6 +40,7 @@ def process_csv_file(csv_file):
             except Exception as e:
                 print(f"Failed to process row: {e}")
     return data
+
 
 def get_attribute_mapping(headers, attribute_type_mapping):
     """
@@ -47,6 +51,7 @@ def get_attribute_mapping(headers, attribute_type_mapping):
         if header in attribute_type_mapping:
             attribute_mapping[header] = attribute_type_mapping[header]
     return attribute_mapping
+
 
 def create_misp_objects_from_csv(data, object_name, attribute_mapping):
     """
@@ -60,7 +65,13 @@ def create_misp_objects_from_csv(data, object_name, attribute_mapping):
                 try:
                     if key in attribute_mapping:
                         attr_details = attribute_mapping[key]
-                        misp_object.add_attribute(attr_details[0], value=value, type=attr_details[1], category=attr_details[2], to_ids=attr_details[3])
+                        misp_object.add_attribute(
+                            attr_details[0],
+                            value=value,
+                            type=attr_details[1],
+                            category=attr_details[2],
+                            to_ids=attr_details[3],
+                        )
                 except Exception as e:
                     print(f"Failed to add attribute {key} to MISP object: {e}")
             misp_objects.append(misp_object)
@@ -68,20 +79,22 @@ def create_misp_objects_from_csv(data, object_name, attribute_mapping):
             print(f"Failed to create MISP object: {e}")
     return misp_objects
 
+
 def get_misp_object_name(csv_file):
     """
     Get the MISP object name based on the CSV file name.
     """
-    if re.search(r'Hash', csv_file, re.IGNORECASE):
+    if re.search(r"Hash", csv_file, re.IGNORECASE):
         return "file"
-    elif re.search(r'URL', csv_file, re.IGNORECASE):
+    elif re.search(r"URL", csv_file, re.IGNORECASE):
         return "url"
-    elif re.search(r'IP', csv_file, re.IGNORECASE):
+    elif re.search(r"IP", csv_file, re.IGNORECASE):
         return "domain-ip"
-    elif re.search(r'Domain', csv_file, re.IGNORECASE):
+    elif re.search(r"Domain", csv_file, re.IGNORECASE):
         return "domain"
     else:
         return "unknown"
+
 
 def process_and_submit_to_misp(misp, case_str, csv_files_created):
     """
@@ -90,31 +103,43 @@ def process_and_submit_to_misp(misp, case_str, csv_files_created):
     misp_event = get_misp_event(misp, case_str)
     print(f"Using MISP event {misp_event.id} for submission")
     print("Processing CSV files and submitting data to MISP...")
-    print('csv_files_created:', csv_files_created)
+    print("csv_files_created:", csv_files_created)
 
     attribute_type_mapping = {
-        'ip': ('ip-src', 'ip-src', 'Network activity', False, ['tlp:green']),
-        'malicious_score': ('malicious_score', 'text', 'Antivirus detection', False, ['tlp:white']),
+        "ip": ("ip-src", "ip-src", "Network activity", False, ["tlp:green"]),
+        "malicious_score": (
+            "malicious_score",
+            "text",
+            "Antivirus detection",
+            False,
+            ["tlp:white"],
+        ),
         #'suspicious_score': ('suspicious_score', 'text', 'Antivirus detection', False, ['tlp:white']),
         #'safe_score': ('safe_score', 'text', 'Antivirus detection', False, ['tlp:white']),
         #'undetected_score': ('undetected_score', 'text', 'Antivirus detection', False, ['tlp:white']),
-        'owner': ('owner', 'text', 'Other', False, ['tlp:white']),
-        'location': ('location', 'text', 'Other', False, ['tlp:white']),
-        'network': ('network', 'text', 'Other', False, ['tlp:white']),
-        'https_certificate': ('https_certificate', 'text', 'Other', False, ['tlp:white']),
-        'info-ip': ('info-ip', 'text', 'Other', False, ['tlp:white']),
-        'link': ('link', 'link', 'External analysis', False, ['tlp:white']),
-        'url': ('url', 'url', 'Network activity', False, ['tlp:green']),
-        'title': ('title', 'text', 'Other', False, ['tlp:white']),
-        'final_Url': ('final_Url', 'text', 'Other', False, ['tlp:white']),
-        'first_scan': ('first_scan', 'datetime', 'Other', False, ['tlp:white']),
-        'info': ('info', 'text', 'Other', False, ['tlp:white']),
-        'sha256': ('sha256', 'sha256', 'Payload delivery', False, ['tlp:green']),
-        'md5': ('md5', 'md5', 'Payload delivery', False, ['tlp:white']),
-        'sha1': ('sha1', 'sha1', 'Payload delivery', False, ['tlp:white']),
-        'ssdeep': ('ssdeep', 'ssdeep', 'Payload delivery', False, ['tlp:white']),
-        'tlsh': ('tlsh', 'tlsh', 'Payload delivery', False, ['tlp:white']),
-        'size': ('size', 'size-in-bytes', 'Payload delivery', False, ['tlp:white'])
+        "owner": ("owner", "text", "Other", False, ["tlp:white"]),
+        "location": ("location", "text", "Other", False, ["tlp:white"]),
+        "network": ("network", "text", "Other", False, ["tlp:white"]),
+        "https_certificate": (
+            "https_certificate",
+            "text",
+            "Other",
+            False,
+            ["tlp:white"],
+        ),
+        "info-ip": ("info-ip", "text", "Other", False, ["tlp:white"]),
+        "link": ("link", "link", "External analysis", False, ["tlp:white"]),
+        "url": ("url", "url", "Network activity", False, ["tlp:green"]),
+        "title": ("title", "text", "Other", False, ["tlp:white"]),
+        "final_Url": ("final_Url", "text", "Other", False, ["tlp:white"]),
+        "first_scan": ("first_scan", "datetime", "Other", False, ["tlp:white"]),
+        "info": ("info", "text", "Other", False, ["tlp:white"]),
+        "sha256": ("sha256", "sha256", "Payload delivery", False, ["tlp:green"]),
+        "md5": ("md5", "md5", "Payload delivery", False, ["tlp:white"]),
+        "sha1": ("sha1", "sha1", "Payload delivery", False, ["tlp:white"]),
+        "ssdeep": ("ssdeep", "ssdeep", "Payload delivery", False, ["tlp:white"]),
+        "tlsh": ("tlsh", "tlsh", "Payload delivery", False, ["tlp:white"]),
+        "size": ("size", "size-in-bytes", "Payload delivery", False, ["tlp:white"]),
     }
 
     for csv_file in csv_files_created:
@@ -124,10 +149,13 @@ def process_and_submit_to_misp(misp, case_str, csv_files_created):
             headers = data[0].keys()
             attribute_mapping = get_attribute_mapping(headers, attribute_type_mapping)
             object_name = get_misp_object_name(csv_file)
-            misp_objects = create_misp_objects_from_csv(data, object_name, attribute_mapping)
+            misp_objects = create_misp_objects_from_csv(
+                data, object_name, attribute_mapping
+            )
             submit_misp_objects(misp, misp_event, misp_objects)
         except Exception as e:
             print(f"Failed to process CSV file: {e}")
+
 
 def submit_misp_objects(misp, misp_event, misp_objects):
     """
@@ -144,6 +172,7 @@ def submit_misp_objects(misp, misp_event, misp_objects):
     except Exception as e:
         print(f"Failed to submit MISP objects: {e}")
 
+
 def misp_event(case_str, csvfilescreated):
     """
     Initialize MISP connection and start the process of sending data to MISP.
@@ -155,7 +184,11 @@ def misp_event(case_str, csvfilescreated):
     logging.getLogger("Python").setLevel(logging.CRITICAL)
     logging.getLogger().setLevel(logging.CRITICAL)
     # Suppress specific PyMISP warnings related to object templates
-    warnings.filterwarnings("ignore", category=UserWarning, message="The template .* doesn't have the object_relation .*")
+    warnings.filterwarnings(
+        "ignore",
+        category=UserWarning,
+        message="The template .* doesn't have the object_relation .*",
+    )
 
     try:
         console.print("[bold]Initializing MISP connection...[/bold]")
@@ -168,13 +201,16 @@ def misp_event(case_str, csvfilescreated):
             misp_url = Prompt.ask("[bold]Enter your MISP URL[/bold]")
 
         misp = ExpandedPyMISP(misp_url, misp_key, False)
-        console.print("[bold green]MISP connection established successfully.[/bold green]")
+        console.print(
+            "[bold green]MISP connection established successfully.[/bold green]"
+        )
         process_and_submit_to_misp(misp, case_str, csvfilescreated)
     except KeyboardInterrupt:
         console.print("[bold red]Exiting...[/bold red]")
     except Exception as e:
         console.print(f"[bold red]An error occurred: {e}[/bold red]")
         console.print("[bold red]Exiting...[/bold red]")
+
 
 def misp_choice(case_str, csvfilescreated):
     """
@@ -185,7 +221,7 @@ def misp_choice(case_str, csvfilescreated):
         console.print("- Yes (1, Y, yes)")
         console.print("- No (2, N, no)")
         choice = Prompt.ask("[bold]Enter your choice[/bold]").strip().lower()
-        
+
         if choice in ["1", "y", "yes"]:
             if case_str == "000000":
                 case_str = Prompt.ask("[bold]Please enter the MISP event ID[/bold]")
