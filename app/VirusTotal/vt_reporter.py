@@ -101,9 +101,9 @@ class VTReporter:
         self, value_object, total_scans, malicious, suspicious, undetected, harmless
     ):
         value_object["malicious_score"] = malicious
-        value_object["suspicious_score"] = suspicious
-        value_object["safe_score"] = harmless
-        value_object["undetected_score"] = undetected
+        #value_object["suspicious_score"] = suspicious
+        #value_object["safe_score"] = harmless
+        #value_object["undetected_score"] = undetected
         value_object["total_scans"] = total_scans
 
     def populate_link(self, value_object, value, value_type):

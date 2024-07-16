@@ -231,7 +231,7 @@ def analyze_values(args: argparse.Namespace, value_types: list[str]) -> None:
                     border_style="green",
                 )
             )
-            results, skipped_values = analyze_value_type(
+            results, skipped_values, error_values = analyze_value_type(
                 init, value_type, values[value_type], conn
             )
             quota_saved += skipped_values
@@ -253,6 +253,7 @@ def analyze_values(args: argparse.Namespace, value_types: list[str]) -> None:
             console.print(
                 f"Analysis completed. {quota_saved} values were skipped as they already exist in the database."
             )
+        console.print(f"Errors occurred for {error_values} values.")
         console.print(f"Remaining queries for this hour: {quota_final}")
         total_time = datetime.now() - start_time
         console.print(f"Total time taken: {total_time}")
@@ -264,10 +265,11 @@ def analyze_values(args: argparse.Namespace, value_types: list[str]) -> None:
 
 def analyze_value_type(
     init: Initializator, value_type: str, values: list[str], conn
-) -> tuple[list[dict], int]:
+):
     """Analyze values of a specific type."""
     results = []
     skipped_values = 0
+    error_values = 0
 
     for value in values:
         if value_exists(init, value, value_type, conn):
@@ -280,8 +282,10 @@ def analyze_value_type(
             result = analyze_value(init, value_type, value)
             if result:
                 results.append(result)
+            else:
+                error_values += 1
 
-    return results, skipped_values
+    return results, skipped_values, error_values
 
 
 def get_existing_report(init: Initializator, value: str, value_type: str, conn) -> dict:

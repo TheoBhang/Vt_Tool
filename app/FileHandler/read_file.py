@@ -151,9 +151,11 @@ class ValueReader:
                             corresponding to these keys are lists of extracted values.
     """
 
-    def __init__(self, fname: str = None):
+    def __init__(self, fname, values):
         self.fname = fname
-        self.dict_values: dict = defaultdict(list)
+        self.values = values
+        self.dict_values_file = defaultdict(list)
+        self.dict_values = defaultdict(list)
 
     def read_from_stdin(self) -> dict:
         """
@@ -163,74 +165,96 @@ class ValueReader:
             dict: A dictionary with keys 'ips', 'urls', 'hashes', 'keys', and 'domains'. The values
                   corresponding to these keys are lists of extracted values.
         """
-        value_extractor = ValueExtractor()
-        for line in sys.stdin:
-            line_values = value_extractor.sort_values(line, is_file=False)
-            for key, values in line_values.items():
-                self.dict_values[key].extend(values)
-        print("Successfully read values from standard input")
-        return dict(self.dict_values)
+        # Check if standard input is a terminal
+        if sys.stdin.isatty():
+            return {"ips": [], "urls": [], "hashes": [], "keys": [], "domains": []}
+        elif sys.stdin.closed:  # Check if standard input is closed
+            raise ValueError("Standard input is closed")  # Raise an error
+        else:
+            # Create a new ValueExtractor instance
+            value_extractor = ValueExtractor()
+            # Read lines from standard input
+            for line in sys.stdin:
+                # Sort values from each line
+                line_values = value_extractor.sort_values(line, is_file=False)
+                # Merge the values from the current line with the accumulated values
+                for key, values in line_values.items():
+                    self.dict_values[key].extend(values)
+            # Return the accumulated values
+            print("Successfully read values from user input")
+            return self.dict_values
 
-    def read_from_file(self) -> dict:
+
+    def read_from_file(self):
         """
         Read values from a file.
 
         Returns:
-            dict: A dictionary with keys 'ips', 'urls', 'hashes', 'keys', and 'domains'. The values
-                  corresponding to these keys are lists of extracted values.
+        dict: A dictionary with four keys: 'ips', 'urls', 'hashes', and 'keys'. The values
+            corresponding to these keys are lists of extracted values from the file.
         """
-        if not self.fname:
+        # Check if a file name is provided
+        if self.fname is None:
             print("No file name provided")
-            return dict(self.dict_values)
+            return {"ips": [], "urls": [], "hashes": [], "keys": [], "domains": []}
 
         value_extractor = ValueExtractor()
         try:
-            with open(self.fname, encoding="utf8") as f:
-                for line in f:
+            with open(self.fname, encoding="utf8") as f:  # Open file
+                for line in f:  # Iterate through each line in the file
+                    # Sort values from each line
                     line_values = value_extractor.sort_values(line, is_file=True)
+                    # Merge the values from the current line with the accumulated values
                     for key, values in line_values.items():
-                        self.dict_values[key].extend(values)
+                        self.dict_values_file[key].extend(values)
+            # Print success message
             print(f"Successfully read values from {self.fname}")
-            return dict(self.dict_values)
+            return self.dict_values_file
 
         except FileNotFoundError:
+            # Print error message if the file is not found
             print(f"File {self.fname} not found")
-            return dict(self.dict_values)
+            return {"ips": [], "urls": [], "hashes": [], "keys": [], "domains": []}
 
-        except IOError as e:
+        except IOError as e:  # Catch IOError if there is a problem reading the file
+            # Print error message
             print(f"I/O error({e.errno}): {e.strerror}")
-            return dict(self.dict_values)
 
-    def read_values(self) -> dict:
+    def read_values(self):
         """
         Read values from standard input and file, remove duplicates and None values.
 
         Returns:
-            dict: A dictionary with keys 'ips', 'urls', 'hashes', and 'domains'. The values
-                  corresponding to these keys are lists of extracted values.
+        dict: A dictionary with four keys: 'ips', 'urls', 'hashes', and 'keys'. The values
+              corresponding to these keys are lists of extracted values from the user.
         """
-        self.read_from_stdin()
-        self.read_from_file()
+        # Read values from standard input
+        values = self.read_from_stdin() 
+        if values is None:
+            values = defaultdict(list)
 
+        # Read values from file
+        file_values = self.read_from_file()
+
+        # Combine values and file_values
         combined_values = defaultdict(list)
-        for key in self.dict_values.keys():
-            combined_values[key] = self.dict_values[key]
+        for key in values.keys():
+            combined_values[key] = values[key] + self.dict_values[key] + file_values[key]
 
         # Remove duplicates and None values
         for key in combined_values.keys():
             combined_values[key] = list(set(filter(None, combined_values[key])))
 
-        # Extract domain values and filter filenames
-        domains = combined_values["domains"]
-        combined_values["domains"] = [
-            domain
-            for domain in domains
-            if not ValueExtractor()._matches_filename(domain)
-        ]
+        # Extract domain values
+        domains = combined_values['domains']
+        combined_values['domains'] = [domain for domain in domains if not ValueExtractor()._matches_filename(domain)]
 
-        return {
-            "ips": combined_values["ips"],
-            "urls": combined_values["urls"],
-            "hashes": combined_values["hashes"],
-            "domains": combined_values["domains"],
+        # Create dictionary of results
+        results = {
+            "ips": combined_values['ips'],
+            "urls": combined_values['urls'],
+            "hashes": combined_values['hashes'],
+            "domains": combined_values['domains'],
         }
+
+        return results
