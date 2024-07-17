@@ -13,9 +13,6 @@ CREATE TABLE IF NOT EXISTS urls (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     url TEXT,
     malicious_score TEXT,
-    suspicious_score TEXT,
-    safe_score TEXT,
-    undetected_score TEXT,
     total_scans TEXT,
     link TEXT,
     title TEXT,
@@ -32,9 +29,6 @@ CREATE TABLE IF NOT EXISTS hashes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     hash TEXT,
     malicious_score TEXT,
-    suspicious_score TEXT,
-    safe_score TEXT,
-    undetected_score TEXT,
     total_scans TEXT,
     link TEXT,
     extension TEXT,
@@ -53,9 +47,6 @@ CREATE TABLE IF NOT EXISTS ips (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ip TEXT,
     malicious_score TEXT,
-    suspicious_score TEXT,
-    safe_score TEXT,
-    undetected_score TEXT,
     total_scans TEXT,
     link TEXT,
     owner TEXT,
@@ -70,9 +61,6 @@ CREATE TABLE IF NOT EXISTS domains (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     domain TEXT,
     malicious_score TEXT,
-    suspicious_score TEXT,
-    safe_score TEXT,
-    undetected_score TEXT,
     total_scans TEXT,
     link TEXT,
     creation_date TEXT,
@@ -92,7 +80,6 @@ class DBHandler:
         conn = None
         try:
             conn = sqlite3.connect(db_file)
-            print(f"Connected to SQLite database: {db_file}")
         except Error as e:
             print(f"Error connecting to SQLite database: {e}")
         return conn
@@ -114,10 +101,10 @@ class DBHandler:
 
     def insert_ip_data(self, conn, ip_data):
         """Insert IP data into the ips table"""
-        sql = """INSERT INTO ips(ip, malicious_score, suspicious_score, safe_score, undetected_score,
+        sql = """INSERT INTO ips(ip, malicious_score, 
                 total_scans, link, owner, location, network, https_certificate,
                 regional_internet_registry, asn)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+                VALUES(?,?,?,?,?,?,?,?,?,?)"""
 
         try:
             cur = conn.cursor()
@@ -134,9 +121,6 @@ class DBHandler:
                 (
                     ip_data.get("ip"),
                     ip_data.get("malicious_score"),
-                    ip_data.get("suspicious_score"),
-                    ip_data.get("safe_score"),
-                    ip_data.get("undetected_score"),
                     ip_data.get("total_scans"),
                     ip_data.get("link"),
                     ip_data.get("owner"),
@@ -158,10 +142,10 @@ class DBHandler:
 
     def insert_domain_data(self, conn, domain_data):
         """Insert domain data into the domains table"""
-        sql = """INSERT INTO domains(domain, malicious_score, suspicious_score, safe_score, undetected_score,
+        sql = """INSERT INTO domains(domain, malicious_score,
                 total_scans, link, creation_date, reputation, whois, last_analysis_results, last_analysis_stats,
                 last_dns_records, last_https_certificate, registrar)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?)"""
 
         try:
             cur = conn.cursor()
@@ -178,9 +162,6 @@ class DBHandler:
                 (
                     domain_data.get("domain"),
                     domain_data.get("malicious_score"),
-                    domain_data.get("suspicious_score"),
-                    domain_data.get("safe_score"),
-                    domain_data.get("undetected_score"),
                     domain_data.get("total_scans"),
                     domain_data.get("link"),
                     domain_data.get("creation_date"),
@@ -203,9 +184,9 @@ class DBHandler:
         
     def insert_url_data(self, conn, url_data):
         """Insert URL data into the urls table"""
-        sql = """INSERT INTO urls(url, malicious_score, suspicious_score, safe_score, undetected_score,
+        sql = """INSERT INTO urls(url, malicious_score, 
                     total_scans, link, title, final_url, first_scan, metadatas, targeted, links, redirection_chain, trackers)
-                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?)"""
 
         try:
             cur = conn.cursor()
@@ -222,9 +203,6 @@ class DBHandler:
                 (
                     url_data.get("url"),
                     url_data.get("malicious_score"),
-                    url_data.get("suspicious_score"),
-                    url_data.get("safe_score"),
-                    url_data.get("undetected_score"),
                     url_data.get("total_scans"),
                     url_data.get("link"),
                     url_data.get("title"),
@@ -247,9 +225,9 @@ class DBHandler:
 
     def insert_hash_data(self, conn, hash_data):
         """Insert hash data into the hashes table"""
-        sql = """INSERT INTO hashes(hash, malicious_score, suspicious_score, safe_score, undetected_score,
+        sql = """INSERT INTO hashes(hash, malicious_score, 
                 total_scans, link, extension, size, md5, sha1, sha256, ssdeep, tlsh, names, type, type_probability)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
 
         try:
             cur = conn.cursor()
@@ -266,9 +244,6 @@ class DBHandler:
                 (
                     hash_data.get("hash"),
                     hash_data.get("malicious_score"),
-                    hash_data.get("suspicious_score"),
-                    hash_data.get("safe_score"),
-                    hash_data.get("undetected_score"),
                     hash_data.get("total_scans"),
                     hash_data.get("link"),
                     hash_data.get("extension"),
@@ -426,9 +401,6 @@ class DBHandler:
     def create_object(self, value_type, value, report):
         value_object = {
             "malicious_score": NOT_FOUND_ERROR,
-            "suspicious_score": NOT_FOUND_ERROR,
-            "safe_score": NOT_FOUND_ERROR,
-            "undetected_score": NOT_FOUND_ERROR,
             "total_scans": NOT_FOUND_ERROR,
             "link": NO_LINK,
         }
@@ -462,9 +434,6 @@ class DBHandler:
         self, value_object, total_scans, malicious, suspicious, undetected, harmless
     ):
         value_object["malicious_score"] = malicious
-        value_object["suspicious_score"] = suspicious
-        value_object["safe_score"] = harmless
-        value_object["undetected_score"] = undetected
         value_object["total_scans"] = total_scans
 
     def populate_link(self, value_object, value, value_type):

@@ -62,9 +62,6 @@ class VTReporter:
         conn = DBHandler().create_connection(database)
         value_object = {
             "malicious_score": NOT_FOUND_ERROR,
-            "suspicious_score": NOT_FOUND_ERROR,
-            "safe_score": NOT_FOUND_ERROR,
-            "undetected_score": NOT_FOUND_ERROR,
             "total_scans": NOT_FOUND_ERROR,
             "link": NO_LINK,
         }
@@ -72,11 +69,8 @@ class VTReporter:
         if report != NOT_FOUND_ERROR and report:
             total_scans = sum(report.last_analysis_stats.values())
             malicious = report.last_analysis_stats.get("malicious", 0)
-            suspicious = report.last_analysis_stats.get("suspicious", 0)
-            undetected = report.last_analysis_stats.get("undetected", 0)
-            harmless = report.last_analysis_stats.get("harmless", 0)
             self.populate_scores(
-                value_object, total_scans, malicious, suspicious, undetected, harmless
+                value_object, total_scans, malicious
             )
             self.populate_link(value_object, value, value_type)
 
@@ -98,12 +92,9 @@ class VTReporter:
         return value_object
 
     def populate_scores(
-        self, value_object, total_scans, malicious, suspicious, undetected, harmless
+        self, value_object, total_scans, malicious
     ):
         value_object["malicious_score"] = malicious
-        #value_object["suspicious_score"] = suspicious
-        #value_object["safe_score"] = harmless
-        #value_object["undetected_score"] = undetected
         value_object["total_scans"] = total_scans
 
     def populate_link(self, value_object, value, value_type):
