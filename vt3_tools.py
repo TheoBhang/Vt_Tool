@@ -183,15 +183,15 @@ def analyze_values(args: argparse.Namespace, value_types: list[str]) -> None:
             init.db_handler.create_schema(conn)
 
         start_time = datetime.now()
-        console.print("\nChecking for remaining queries...")
+        console.print("\n[bold blue]Checking for remaining queries...[/bold blue]")
         remaining_queries = get_remaining_quota(init.api_key, init.proxy)
 
         if remaining_queries == 0:
             console.print(
                 "[bold yellow]No queries remaining for this hour.[/bold yellow]"
             )
-            console.print("Check your API key before analysis.")
-            console.print("Thank you for using VT Tools! [bold green]👍[/bold green]")
+            console.print("[bold blue]Check your API key before analysis.[/bold blue]")
+            console.print("[bold green]Thank you for using VT Tools! 👍[/bold green]")
             return
 
         console.print(f"Remaining queries for this hour: {remaining_queries}")
@@ -203,7 +203,7 @@ def analyze_values(args: argparse.Namespace, value_types: list[str]) -> None:
             return
 
         console.print(
-            f"This analysis will use {count_iocs(values)} out of your {remaining_queries} hourly quota.\n"
+            f"[bold blue]This analysis will use {count_iocs(values)} out of your {remaining_queries} hourly quota.[/bold blue]\n"
         )
 
         if remaining_queries < count_iocs(values):
@@ -243,23 +243,23 @@ def analyze_values(args: argparse.Namespace, value_types: list[str]) -> None:
         quota_final = get_remaining_quota(init.api_key, init.proxy)
         if quota_saved == 0:
             console.print(
-                "Analysis completed. No values were skipped as they already exist in the database."
+                "[bold green]Analysis completed. No values were skipped.[/bold green]"
             )
         elif quota_saved == 1:
             console.print(
-                "Analysis completed. 1 value was skipped as it already exists in the database."
+                "[bold green]Analysis completed. 1 value was skipped as it already exists in the database.[/bold green]"
             )
         else:
             console.print(
-                f"Analysis completed. {quota_saved} values were skipped as they already exist in the database."
+                f"[bold green]Analysis completed. {quota_saved} values were skipped as they already exist in the database.[/bold green]"
             )
-        console.print(f"Errors occurred for {error_values} values.")
-        console.print(f"Remaining queries for this hour: {quota_final}")
+        console.print(f"[bold blue]Errors occurred for {error_values} values.[/bold blue]")
+        console.print(f"[bold yellow]Remaining queries for this hour: {quota_final}[/bold yellow]")
         total_time = datetime.now() - start_time
-        console.print(f"Total time taken: {total_time}")
+        console.print(f"[bold blue]Total time taken: {total_time}[/bold blue]")
 
         misp_choice(case_str=case_id, csvfilescreated=csv_files_created)
-        console.print("Thank you for using VT Tools! [bold green]👍[/bold green]")
+        console.print("[bold green]Thank you for using VT Tools!👍[/bold green]")
         close_resources(init)
 
 
@@ -363,10 +363,11 @@ def process_results(init: Initializator, results: list[dict], value_type: str) -
     value_rows = []
 
     for result in results:
-        for row in result["rows"]:
-            if row[0] not in header_rows:
-                header_rows.append(row[0])
-            value_rows.append(row[1:])
+        if result:
+            for row in result["rows"]:
+                if row[0] not in header_rows:
+                    header_rows.append(row[0])
+                value_rows.append(row[1:])
 
     table = cpt(header_rows, value_rows)
     strtable = table.create_table()

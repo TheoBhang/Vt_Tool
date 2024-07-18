@@ -189,7 +189,7 @@ class VTReporter:
                 "type": report.trid[0]["file_type"]
                 if hasattr(report, "trid")
                 else "No filetype Found",
-                "Type Probability": report.trid[0]["probability"]
+                "type_probability": report.trid[0]["probability"]
                 if hasattr(report, "trid")
                 else "No type probabilty",
             }
@@ -219,21 +219,7 @@ class VTReporter:
             rows = [[key, value] for key, value in row_object.items()]
 
             # Append standard rows
-            standard_rows = [["VirusTotal Total Votes", report.get("total_votes", 0)]]
-            rows.extend(standard_rows)
-
-            return rows
-        else:
-            try:
-                row_object.pop("info")
-            except Exception as e:
-                pass
-
-            # Construct rows from the value object
-            rows = [[key, value] for key, value in row_object.items()]
-
-            # Append standard rows
-            standard_rows = [["VirusTotal Total Votes", NOT_FOUND_ERROR]]
+            standard_rows = [["VirusTotal Total Votes", getattr(report, "total_votes", "No total votes found")]]
             rows.extend(standard_rows)
 
             return rows

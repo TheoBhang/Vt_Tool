@@ -40,9 +40,7 @@ class CustomPrettyTable:
         # Set headers and alignment
         table.field_names = self.headers
         table.reversesort = True
-
         # Add rows to the table
         for row in filtered_data:
             table.add_row(row)
-
         return str(table)

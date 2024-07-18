@@ -119,16 +119,16 @@ class DBHandler:
             cur.execute(
                 sql,
                 (
-                    ip_data.get("ip"),
-                    ip_data.get("malicious_score"),
-                    ip_data.get("total_scans"),
-                    ip_data.get("link"),
-                    ip_data.get("owner"),
-                    ip_data.get("location"),
-                    ip_data.get("network"),
-                    ip_data.get("https_certificate"),
-                    ip_data["info-ip"].get("regional_internet_registry"),
-                    ip_data["info-ip"].get("asn"),
+                    str(ip_data.get("ip")),
+                    str(ip_data.get("malicious_score")),
+                    str(ip_data.get("total_scans")),
+                    str(ip_data.get("link")),
+                    str(ip_data.get("owner")),
+                    str(ip_data.get("location")),
+                    str(ip_data.get("network")),
+                    str(ip_data.get("https_certificate")),
+                    str(ip_data["info-ip"].get("regional_internet_registry")),
+                    str(ip_data["info-ip"].get("asn")),
                 ),
             )
 
@@ -254,8 +254,8 @@ class DBHandler:
                     hash_data.get("ssdeep"),
                     hash_data.get("tlsh"),
                     hash_data.get("names"),
-                    hash_data.get("Type"),
-                    hash_data.get("Type Probability"),
+                    hash_data.get("type"),
+                    hash_data.get("type_probability"),
                 ),
             )
 
@@ -341,14 +341,13 @@ class DBHandler:
         dict: The report for the value.
         """
         # Get the report for the value
+        
         report = self.create_report(value_type, value, conn)
         if report:
             # Generate CSV report
             csv_report = self.csv_report(value_type, value, report)
-
             # Get rows for the report
             rows = self.get_rows(value_type, value, report)
-
             # Construct the final results dictionary
             results = {"report": report, "csv_report": csv_report, "rows": rows}
 
@@ -370,7 +369,7 @@ class DBHandler:
             elif value_type == "URL":
                 cursor.execute("SELECT * FROM urls WHERE url = ?", (value,))
             elif value_type in ["SHA-256", "SHA-1", "MD5"]:
-                cursor.execute("SELECT * FROM hashes WHERE hash = ?", (value,))
+                cursor.execute("SELECT * FROM hashes WHERE hash = ? OR md5 = ? OR sha1 = ?", (value,value,value))
 
             report = cursor.fetchone()
         except Exception as e:
@@ -406,14 +405,11 @@ class DBHandler:
         }
 
         if report != NOT_FOUND_ERROR and report:
-            total_scans = report[6]
+            total_scans = report[3]
             malicious = report[2]
-            suspicious = report[3]
-            harmless = report[4]
-            undetected = report[5]
 
             self.populate_scores(
-                value_object, total_scans, malicious, suspicious, undetected, harmless
+                value_object, total_scans, malicious
             )
             self.populate_link(value_object, value, value_type)
 
@@ -431,7 +427,7 @@ class DBHandler:
         return value_object
 
     def populate_scores(
-        self, value_object, total_scans, malicious, suspicious, undetected, harmless
+        self, value_object, total_scans, malicious
     ):
         value_object["malicious_score"] = malicious
         value_object["total_scans"] = total_scans
@@ -457,13 +453,13 @@ class DBHandler:
         """
         value_object.update({
             "ip": value,
-            "owner": report[0],
-            "location": report[1],
-            "network": report[2],
-            "https_certificate": report[3],
+            "owner": report[5],
+            "location": report[6],
+            "network": report[7],
+            "https_certificate": report[8],
             "info-ip": {
-                "regional_internet_registry": report[4],
-                "asn": report[5],
+                "regional_internet_registry": report[9],
+                "asn": report[10],
             },
         })
 
@@ -483,15 +479,15 @@ class DBHandler:
         """
         value_object.update({
             "domain": value,
-            "creation_date": report[0],
-            "reputation": report[1],
-            "whois": report[2],
+            "creation_date": report[5],
+            "reputation": report[6],
+            "whois": report[7],
             "info": {
-                "last_analysis_results": report[3],
-                "last_analysis_stats": report[4],
-                "last_dns_records": report[5],
-                "last_https_certificate": report[6],
-                "registrar": report[7],
+                "last_analysis_results": report[8],
+                "last_analysis_stats": report[9],
+                "last_dns_records": report[10],
+                "last_https_certificate": report[11],
+                "registrar": report[12],
             },
         })
 
@@ -510,15 +506,15 @@ class DBHandler:
         """
         value_object.update({
             "url": value,
-            "title": report[0],
-            "final_url": report[1],
-            "first_scan": report[2],
+            "title": report[5],
+            "final_url": report[6],
+            "first_scan": report[7],
             "info": {
-                "metadatas": report[3],
-                "targeted": report[4],
-                "links": report[5],
-                "redirection_chain": report[6],
-                "trackers": report[7],
+                "metadatas": report[8],
+                "targeted": report[9],
+                "links": report[10],
+                "redirection_chain": report[11],
+                "trackers": report[12],
             },
         })
 
@@ -538,17 +534,18 @@ class DBHandler:
         value_object.update(
             {
                 "hash": value,
-                "extension": report[8],
-                "size": report[9],
-                "md5": report[10],
-                "sha1": report[11],
-                "sha256": report[12],
-                "ssdeep": report[13],
-                "tlsh": report[14],
-                "names": report[15],
-                "type": report[16],
-                "type_probability": report[17],
+                "extension": report[5],
+                "size": report[6],
+                "md5": report[7],
+                "sha1": report[8],
+                "sha256": report[9],
+                "ssdeep": report[10],
+                "tlsh": report[11],
+                "names": report[12],
+                "type": report[13],
+                "type_probability": report[14],
             }
+            
         )
 
     def get_rows(self, value_type, value, report):
@@ -570,8 +567,10 @@ class DBHandler:
                 row_object.pop("info")
             except Exception as e:
                 pass
-
             # Construct rows from the value object
             rows = [[key, value] for key, value in row_object.items()]
-
+            # Append standard rows
+            standard_rows = [["VirusTotal Total Votes", getattr(report, "total_votes", "No total votes found")]]
+            rows.extend(standard_rows)
+            
             return rows
