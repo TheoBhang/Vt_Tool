@@ -227,8 +227,7 @@ class DBHandler:
         """Insert hash data into the hashes table"""
         sql = """INSERT INTO hashes(hash, malicious_score, 
                 total_scans, link, extension, size, md5, sha1, sha256, ssdeep, tlsh, names, type, type_probability)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
-
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
         try:
             cur = conn.cursor()
 

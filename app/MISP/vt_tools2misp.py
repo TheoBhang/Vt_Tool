@@ -7,7 +7,6 @@ import warnings
 from pymisp import ExpandedPyMISP, MISPEvent, MISPObject
 from rich.console import Console
 from rich.prompt import Prompt
-from rich.text import Text
 
 console = Console()
 
@@ -19,8 +18,8 @@ def get_misp_event(misp, case_str):
     try:
         event = misp.get_event(case_str)
     except Exception as e:
-        print(f"Failed to get MISP event: {e}")
-        print("Creating a new MISP event...")
+        console.print(f"[bold red]Failed to get MISP event: {e}[/bold red]")
+        console.print("[bold yellow]Creating a new MISP event...[/bold yellow]")
         event = misp.new_event(info="VirusTotal Report")
     misp_event = MISPEvent()
     misp_event.load(event)
@@ -38,7 +37,7 @@ def process_csv_file(csv_file):
             try:
                 data.append(row)
             except Exception as e:
-                print(f"Failed to process row: {e}")
+                console.print(f"[bold red]Failed to process row: {e}[/bold red]")
     return data
 
 
@@ -65,18 +64,28 @@ def create_misp_objects_from_csv(data, object_name, attribute_mapping):
                 try:
                     if key in attribute_mapping:
                         attr_details = attribute_mapping[key]
-                        misp_object.add_attribute(
-                            attr_details[0],
-                            value=value,
-                            type=attr_details[1],
-                            category=attr_details[2],
-                            to_ids=attr_details[3],
-                        )
+                        # Ensure the specified fields do not correlate
+                        if attr_details[0] in ["malicious_score", "title", "size", "first_scan", "info", "filename"]:
+                            misp_object.add_attribute(
+                                attr_details[0],
+                                value=value,
+                                type=attr_details[1],
+                                category=attr_details[2],
+                                to_ids=False,  # Do not correlate
+                            )
+                        else:
+                            misp_object.add_attribute(
+                                attr_details[0],
+                                value=value,
+                                type=attr_details[1],
+                                category=attr_details[2],
+                                to_ids=attr_details[3],
+                            )
                 except Exception as e:
-                    print(f"Failed to add attribute {key} to MISP object: {e}")
+                    console.print(f"[bold red]Failed to add attribute {key} to MISP object: {e}[/bold red]")
             misp_objects.append(misp_object)
         except Exception as e:
-            print(f"Failed to create MISP object: {e}")
+            console.print(f"[bold red]Failed to create MISP object: {e}[/bold red]")
     return misp_objects
 
 
@@ -101,29 +110,17 @@ def process_and_submit_to_misp(misp, case_str, csv_files_created):
     Process CSV files and submit data to MISP.
     """
     misp_event = get_misp_event(misp, case_str)
-    print(f"Using MISP event {misp_event.id} for submission")
-    print("Processing CSV files and submitting data to MISP...")
-    print("csv_files_created:", csv_files_created)
+    console.print(f"[bold]Using MISP event {misp_event.id} for submission[/bold]")
+    console.print("[bold]Processing CSV files and submitting data to MISP...[/bold]")
+    console.print(f"[bold]CSV files created: {csv_files_created}[/bold]")
 
     attribute_type_mapping = {
         "ip": ("ip-src", "ip-src", "Network activity", False, ["tlp:green"]),
-        "malicious_score": (
-            "malicious_score",
-            "text",
-            "Antivirus detection",
-            False,
-            ["tlp:white"],
-        ),
+        "malicious_score": ("malicious_score", "text", "Antivirus detection", False, ["tlp:white"]),
         "owner": ("owner", "text", "Other", False, ["tlp:white"]),
         "location": ("location", "text", "Other", False, ["tlp:white"]),
         "network": ("network", "text", "Other", False, ["tlp:white"]),
-        "https_certificate": (
-            "https_certificate",
-            "text",
-            "Other",
-            False,
-            ["tlp:white"],
-        ),
+        "https_certificate": ("https_certificate", "text", "Other", False, ["tlp:white"]),
         "info-ip": ("info-ip", "text", "Other", False, ["tlp:white"]),
         "link": ("link", "link", "External analysis", False, ["tlp:white"]),
         "url": ("url", "url", "Network activity", False, ["tlp:green"]),
@@ -140,18 +137,16 @@ def process_and_submit_to_misp(misp, case_str, csv_files_created):
     }
 
     for csv_file in csv_files_created:
-        print(f"Processing CSV file: {csv_file}")
+        console.print(f"[bold]Processing CSV file: {csv_file}[/bold]")
         try:
             data = process_csv_file(csv_file)
             headers = data[0].keys()
             attribute_mapping = get_attribute_mapping(headers, attribute_type_mapping)
             object_name = get_misp_object_name(csv_file)
-            misp_objects = create_misp_objects_from_csv(
-                data, object_name, attribute_mapping
-            )
+            misp_objects = create_misp_objects_from_csv(data, object_name, attribute_mapping)
             submit_misp_objects(misp, misp_event, misp_objects)
         except Exception as e:
-            print(f"Failed to process CSV file: {e}")
+            console.print(f"[bold red]Failed to process CSV file: {e}[/bold red]")
 
 
 def submit_misp_objects(misp, misp_event, misp_objects):
@@ -163,11 +158,11 @@ def submit_misp_objects(misp, misp_event, misp_objects):
             try:
                 misp.add_object(misp_event.id, misp_object)
             except Exception as e:
-                print(f"Failed to add MISP object: {e}")
+                console.print(f"[bold red]Failed to add MISP object: {e}[/bold red]")
         misp.update_event(misp_event)
-        print("MISP objects submitted successfully.")
+        console.print("[bold green]MISP objects submitted successfully.[/bold green]")
     except Exception as e:
-        print(f"Failed to submit MISP objects: {e}")
+        console.print(f"[bold red]Failed to submit MISP objects: {e}[/bold red]")
 
 
 def misp_event(case_str, csvfilescreated):
@@ -198,9 +193,7 @@ def misp_event(case_str, csvfilescreated):
             misp_url = Prompt.ask("[bold]Enter your MISP URL[/bold]")
 
         misp = ExpandedPyMISP(misp_url, misp_key, False)
-        console.print(
-            "[bold green]MISP connection established successfully.[/bold green]"
-        )
+        console.print("[bold green]MISP connection established successfully.[/bold green]")
         process_and_submit_to_misp(misp, case_str, csvfilescreated)
     except KeyboardInterrupt:
         console.print("[bold red]Exiting...[/bold red]")
