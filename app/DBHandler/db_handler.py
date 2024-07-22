@@ -464,13 +464,13 @@ class DBHandler:
         """
         value_object.update({
             "ip": value,
-            "owner": report[5],
-            "location": report[6],
-            "network": report[7],
-            "https_certificate": report[8],
+            "owner": report[6],
+            "location": report[7],
+            "network": report[8],
+            "https_certificate": report[9],
             "info-ip": {
-                "regional_internet_registry": report[9],
-                "asn": report[10],
+                "regional_internet_registry": report[10],
+                "asn": report[11],
             },
         })
 
@@ -490,15 +490,15 @@ class DBHandler:
         """
         value_object.update({
             "domain": value,
-            "creation_date": report[5],
-            "reputation": report[6],
-            "whois": report[7],
+            "creation_date": report[6],
+            "reputation": report[7],
+            "whois": report[8],
             "info": {
-                "last_analysis_results": report[8],
-                "last_analysis_stats": report[9],
-                "last_dns_records": report[10],
-                "last_https_certificate": report[11],
-                "registrar": report[12],
+                "last_analysis_results": report[9],
+                "last_analysis_stats": report[10],
+                "last_dns_records": report[11],
+                "last_https_certificate": report[12],
+                "registrar": report[13],
             },
         })
 
@@ -517,15 +517,15 @@ class DBHandler:
         """
         value_object.update({
             "url": value,
-            "title": report[5],
-            "final_url": report[6],
-            "first_scan": report[7],
+            "title": report[6],
+            "final_url": report[7],
+            "first_scan": report[8],
             "info": {
-                "metadatas": report[8],
-                "targeted": report[9],
-                "links": report[10],
-                "redirection_chain": report[11],
-                "trackers": report[12],
+                "metadatas": report[9],
+                "targeted": report[10],
+                "links": report[11],
+                "redirection_chain": report[12],
+                "trackers": report[13],
             },
         })
 
@@ -545,16 +545,16 @@ class DBHandler:
         value_object.update(
             {
                 "hash": value,
-                "extension": report[5],
-                "size": report[6],
-                "md5": report[7],
-                "sha1": report[8],
-                "sha256": report[9],
-                "ssdeep": report[10],
-                "tlsh": report[11],
-                "names": report[12],
-                "type": report[13],
-                "type_probability": report[14],
+                "extension": report[6],
+                "size": report[7],
+                "md5": report[8],
+                "sha1": report[9],
+                "sha256": report[10],
+                "ssdeep": report[11],
+                "tlsh": report[12],
+                "names": report[13],
+                "type": report[14],
+                "type_probability": report[15],
             }
             
         )
