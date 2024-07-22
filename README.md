@@ -6,7 +6,7 @@
 
 Welcome to the VirusTotal analysis tool by THA-CERT !
 
-This script will retrieve analysis information for a set of values (IP/Hash/URL) from VirusTotal.
+This script will retrieve analysis information for a set of values (IP/Hash/URL/Domain) from VirusTotal.
 
 To use the tool, provide your VirusTotal API key and the values you want to analyze.
 
