@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS urls (
     url TEXT,
     malicious_score TEXT,
     total_scans TEXT,
+    tags TEXT,
     link TEXT,
     title TEXT,
     final_url TEXT,
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS hashes (
     hash TEXT,
     malicious_score TEXT,
     total_scans TEXT,
+    tags TEXT,
     link TEXT,
     extension TEXT,
     size TEXT,
@@ -48,6 +50,7 @@ CREATE TABLE IF NOT EXISTS ips (
     ip TEXT,
     malicious_score TEXT,
     total_scans TEXT,
+    tags TEXT,
     link TEXT,
     owner TEXT,
     location TEXT,
@@ -62,6 +65,7 @@ CREATE TABLE IF NOT EXISTS domains (
     domain TEXT,
     malicious_score TEXT,
     total_scans TEXT,
+    tags TEXT,
     link TEXT,
     creation_date TEXT,
     reputation TEXT,
@@ -101,10 +105,8 @@ class DBHandler:
 
     def insert_ip_data(self, conn, ip_data):
         """Insert IP data into the ips table"""
-        sql = """INSERT INTO ips(ip, malicious_score, 
-                total_scans, link, owner, location, network, https_certificate,
-                regional_internet_registry, asn)
-                VALUES(?,?,?,?,?,?,?,?,?,?)"""
+        sql = """INSERT INTO ips(ip, malicious_score, total_scans, tags, link, owner, location, network, https_certificate, regional_internet_registry, asn)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)"""
 
         try:
             cur = conn.cursor()
@@ -122,6 +124,7 @@ class DBHandler:
                     str(ip_data.get("ip")),
                     str(ip_data.get("malicious_score")),
                     str(ip_data.get("total_scans")),
+                    str(ip_data.get("tags")),
                     str(ip_data.get("link")),
                     str(ip_data.get("owner")),
                     str(ip_data.get("location")),
@@ -143,9 +146,9 @@ class DBHandler:
     def insert_domain_data(self, conn, domain_data):
         """Insert domain data into the domains table"""
         sql = """INSERT INTO domains(domain, malicious_score,
-                total_scans, link, creation_date, reputation, whois, last_analysis_results, last_analysis_stats,
+                total_scans,tags, link, creation_date, reputation, whois, last_analysis_results, last_analysis_stats,
                 last_dns_records, last_https_certificate, registrar)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?)"""
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)"""
 
         try:
             cur = conn.cursor()
@@ -163,6 +166,7 @@ class DBHandler:
                     domain_data.get("domain"),
                     domain_data.get("malicious_score"),
                     domain_data.get("total_scans"),
+                    domain_data.get("tags"),
                     domain_data.get("link"),
                     domain_data.get("creation_date"),
                     domain_data.get("reputation"),
@@ -185,8 +189,8 @@ class DBHandler:
     def insert_url_data(self, conn, url_data):
         """Insert URL data into the urls table"""
         sql = """INSERT INTO urls(url, malicious_score, 
-                    total_scans, link, title, final_url, first_scan, metadatas, targeted, links, redirection_chain, trackers)
-                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?)"""
+                    total_scans, tags, link, title, final_url, first_scan, metadatas, targeted, links, redirection_chain, trackers)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)"""
 
         try:
             cur = conn.cursor()
@@ -204,6 +208,7 @@ class DBHandler:
                     url_data.get("url"),
                     url_data.get("malicious_score"),
                     url_data.get("total_scans"),
+                    url_data.get("tags"),
                     url_data.get("link"),
                     url_data.get("title"),
                     url_data.get("final_url"),
@@ -226,7 +231,7 @@ class DBHandler:
     def insert_hash_data(self, conn, hash_data):
         """Insert hash data into the hashes table"""
         sql = """INSERT INTO hashes(hash, malicious_score, 
-                total_scans, link, extension, size, md5, sha1, sha256, ssdeep, tlsh, names, type, type_probability)
+                total_scans, tags, link, extension, size, md5, sha1, sha256, ssdeep, tlsh, names, type, type_probability)
                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
         try:
             cur = conn.cursor()
@@ -244,6 +249,7 @@ class DBHandler:
                     hash_data.get("hash"),
                     hash_data.get("malicious_score"),
                     hash_data.get("total_scans"),
+                    hash_data.get("tags"),
                     hash_data.get("link"),
                     hash_data.get("extension"),
                     hash_data.get("size"),
@@ -401,11 +407,15 @@ class DBHandler:
             "malicious_score": NOT_FOUND_ERROR,
             "total_scans": NOT_FOUND_ERROR,
             "link": NO_LINK,
+            "tags": NOT_FOUND_ERROR,
         }
-
+        print(report)
         if report != NOT_FOUND_ERROR and report:
             total_scans = report[3]
             malicious = report[2]
+            tags = report[4]
+            
+            self.populate_tags(value_object, tags)
 
             self.populate_scores(
                 value_object, total_scans, malicious
@@ -425,6 +435,9 @@ class DBHandler:
 
         return value_object
 
+    def populate_tags( self, value_object, tags):       
+        value_object["tags"] = tags
+        
     def populate_scores(
         self, value_object, total_scans, malicious
     ):

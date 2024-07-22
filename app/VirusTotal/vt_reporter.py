@@ -63,6 +63,7 @@ class VTReporter:
         value_object = {
             "malicious_score": NOT_FOUND_ERROR,
             "total_scans": NOT_FOUND_ERROR,
+            "tags": NOT_FOUND_ERROR,
             "link": NO_LINK,
         }
 
@@ -72,6 +73,7 @@ class VTReporter:
             self.populate_scores(
                 value_object, total_scans, malicious
             )
+            self.populate_tags(value_object, report)
             self.populate_link(value_object, value, value_type)
 
             if value_type == IPV4_PUBLIC_TYPE:
@@ -90,6 +92,11 @@ class VTReporter:
                 DBHandler().insert_hash_data(conn, value_object)
 
         return value_object
+
+    def populate_tags(self, value_object, report):
+        tags = getattr(report, "tags", [])
+        value_object["tags"] = ", ".join(tags) if tags else NOT_FOUND_ERROR
+        print(value_object["tags"])
 
     def populate_scores(
         self, value_object, total_scans, malicious
