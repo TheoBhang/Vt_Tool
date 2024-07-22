@@ -409,7 +409,6 @@ class DBHandler:
             "link": NO_LINK,
             "tags": NOT_FOUND_ERROR,
         }
-        print(report)
         if report != NOT_FOUND_ERROR and report:
             total_scans = report[3]
             malicious = report[2]

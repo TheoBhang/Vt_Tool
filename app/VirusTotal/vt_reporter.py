@@ -96,7 +96,6 @@ class VTReporter:
     def populate_tags(self, value_object, report):
         tags = getattr(report, "tags", [])
         value_object["tags"] = ", ".join(tags) if tags else NOT_FOUND_ERROR
-        print(value_object["tags"])
 
     def populate_scores(
         self, value_object, total_scans, malicious
