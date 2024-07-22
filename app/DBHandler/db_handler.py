@@ -406,8 +406,8 @@ class DBHandler:
         value_object = {
             "malicious_score": NOT_FOUND_ERROR,
             "total_scans": NOT_FOUND_ERROR,
-            "link": NO_LINK,
             "tags": NOT_FOUND_ERROR,
+            "link": NO_LINK,
         }
         if report != NOT_FOUND_ERROR and report:
             total_scans = report[3]
