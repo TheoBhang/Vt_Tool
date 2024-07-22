@@ -60,21 +60,31 @@ class VTReporter:
         """
         database = "vttools.sqlite"
         conn = DBHandler().create_connection(database)
-        value_object = {
-            "malicious_score": NOT_FOUND_ERROR,
-            "total_scans": NOT_FOUND_ERROR,
-            "tags": NOT_FOUND_ERROR,
-            "link": NO_LINK,
-        }
-
+        if value_type == "SHA-256" or value_type == "SHA-1" or value_type == "MD5":
+            value_object = {
+                "malicious_score": NOT_FOUND_ERROR,
+                "total_scans": NOT_FOUND_ERROR,
+                "tags": NOT_FOUND_ERROR,
+                "threat_category": NOT_FOUND_ERROR,
+                "threat_labels": NOT_FOUND_ERROR,
+                "link": NO_LINK,
+            }
+        else:
+            value_object = {
+                "malicious_score": NOT_FOUND_ERROR,
+                "total_scans": NOT_FOUND_ERROR,
+                "tags": NOT_FOUND_ERROR,
+                "link": NO_LINK,
+            }
         if report != NOT_FOUND_ERROR and report:
             total_scans = sum(report.last_analysis_stats.values())
             malicious = report.last_analysis_stats.get("malicious", 0)
             self.populate_scores(
                 value_object, total_scans, malicious
             )
-            self.populate_tags(value_object, report)
             self.populate_link(value_object, value, value_type)
+            self.populate_tags(value_object, report)
+            
 
             if value_type == IPV4_PUBLIC_TYPE:
                 self.populate_ip_data(value_object, value, report)
@@ -88,9 +98,27 @@ class VTReporter:
             elif (
                 value_type == "SHA-256" or value_type == "SHA-1" or value_type == "MD5"
             ):
+                try:
+                    if report.popular_threat_classification:
+                        popular_threat_classification = report.get("popular_threat_classification", {})
+                
+                        suggested_threat_label = popular_threat_classification.get("suggested_threat_label", NOT_FOUND_ERROR)
+                        popular_threat_category = popular_threat_classification.get('popular_threat_category', [])
+
+                        # Concaténer les valeurs en une seule chaîne de caractères
+                        categories_str = ", ".join(category['value'] for category in popular_threat_category)
+                        if report.popular_threat_classification:
+                            value_object["threat_category"] = categories_str
+                            value_object["threat_labels"] = suggested_threat_label
+                except Exception as e:
+                    pass
+                
                 self.populate_hash_data(value_object, value, report)
                 DBHandler().insert_hash_data(conn, value_object)
-
+            
+            
+            
+            
         return value_object
 
     def populate_tags(self, value_object, report):

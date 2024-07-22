@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS hashes (
     malicious_score TEXT,
     total_scans TEXT,
     tags TEXT,
+    threat_category TEXT,
+    threat_labels TEXT,
     link TEXT,
     extension TEXT,
     size TEXT,
@@ -231,8 +233,8 @@ class DBHandler:
     def insert_hash_data(self, conn, hash_data):
         """Insert hash data into the hashes table"""
         sql = """INSERT INTO hashes(hash, malicious_score, 
-                total_scans, tags, link, extension, size, md5, sha1, sha256, ssdeep, tlsh, names, type, type_probability)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+                total_scans, tags,threat_category,threat_labels,link, extension, size, md5, sha1, sha256, ssdeep, tlsh, names, type, type_probability)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
         try:
             cur = conn.cursor()
 
@@ -250,6 +252,8 @@ class DBHandler:
                     hash_data.get("malicious_score"),
                     hash_data.get("total_scans"),
                     hash_data.get("tags"),
+                    hash_data.get("threat_category"),
+                    hash_data.get("threat_labels"),
                     hash_data.get("link"),
                     hash_data.get("extension"),
                     hash_data.get("size"),
@@ -403,7 +407,17 @@ class DBHandler:
         return csv_report
 
     def create_object(self, value_type, value, report):
-        value_object = {
+        if value_type == "SHA-256" or value_type == "SHA-1" or value_type == "MD5":
+            value_object = {
+                "malicious_score": NOT_FOUND_ERROR,
+                "total_scans": NOT_FOUND_ERROR,
+                "tags": NOT_FOUND_ERROR,
+                "threat_category": NOT_FOUND_ERROR,
+                "threat_labels": NOT_FOUND_ERROR,
+                "link": NOT_FOUND_ERROR,
+            }
+        else:
+            value_object = {
             "malicious_score": NOT_FOUND_ERROR,
             "total_scans": NOT_FOUND_ERROR,
             "tags": NOT_FOUND_ERROR,
@@ -413,14 +427,11 @@ class DBHandler:
             total_scans = report[3]
             malicious = report[2]
             tags = report[4]
-            
-            self.populate_tags(value_object, tags)
-
             self.populate_scores(
                 value_object, total_scans, malicious
             )
             self.populate_link(value_object, value, value_type)
-
+            self.populate_tags(value_object, tags)
             if value_type == IPV4_PUBLIC_TYPE:
                 self.populate_ip_data(value_object, value, report)
             elif value_type == "DOMAIN":
@@ -431,7 +442,13 @@ class DBHandler:
                 value_type == "SHA-256" or value_type == "SHA-1" or value_type == "MD5"
             ):
                 self.populate_hash_data(value_object, value, report)
-
+            
+            if value_type == "SHA-256" or value_type == "SHA-1" or value_type == "MD5":
+                value_object["threat_category"] = report[5]
+                value_object["threat_labels"] = report[6]
+            
+            
+            
         return value_object
 
     def populate_tags( self, value_object, tags):       
@@ -545,16 +562,16 @@ class DBHandler:
         value_object.update(
             {
                 "hash": value,
-                "extension": report[6],
-                "size": report[7],
-                "md5": report[8],
-                "sha1": report[9],
-                "sha256": report[10],
-                "ssdeep": report[11],
-                "tlsh": report[12],
-                "names": report[13],
-                "type": report[14],
-                "type_probability": report[15],
+                "extension": report[8],
+                "size": report[9],
+                "md5": report[10],
+                "sha1": report[11],
+                "sha256": report[12],
+                "ssdeep": report[13],
+                "tlsh": report[14],
+                "names": report[15],
+                "type": report[16],
+                "type_probability": report[17],
             }
             
         )

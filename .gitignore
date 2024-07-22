@@ -4,4 +4,5 @@
 /V2
 .dockerignore
 .env
-.vttools.sqlite
+vttools.sqlite
+__pycache__/

@@ -177,6 +177,7 @@ def analyze_values(args: argparse.Namespace, value_types: list[str]) -> None:
 
     database = "vttools.sqlite"
     quota_saved = 0
+    error_values = 0
 
     with init.db_handler.create_connection(database) as conn:
         if conn is not None:
