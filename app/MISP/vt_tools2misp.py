@@ -65,13 +65,14 @@ def create_misp_objects_from_csv(data, object_name, attribute_mapping):
                     if key in attribute_mapping:
                         attr_details = attribute_mapping[key]
                         # Ensure the specified fields do not correlate
-                        if attr_details[0] in ["malicious_score", "title", "size", "first_scan", "info", "filename"]:
+                        if attr_details[0] in ["ip", "url", "sha256", "md5", "sha1", "ssdeep", "tlsh"]:
                             misp_object.add_attribute(
                                 attr_details[0],
                                 value=value,
                                 type=attr_details[1],
                                 category=attr_details[2],
-                                to_ids=False,  # Do not correlate
+                                to_ids=True,
+                                disable_correlation=False,
                             )
                         else:
                             misp_object.add_attribute(
@@ -80,6 +81,7 @@ def create_misp_objects_from_csv(data, object_name, attribute_mapping):
                                 type=attr_details[1],
                                 category=attr_details[2],
                                 to_ids=attr_details[3],
+                                disable_correlation=True,
                             )
                 except Exception as e:
                     console.print(f"[bold red]Failed to add attribute {key} to MISP object: {e}[/bold red]")
@@ -98,7 +100,7 @@ def get_misp_object_name(csv_file):
     elif re.search(r"URL", csv_file, re.IGNORECASE):
         return "url"
     elif re.search(r"IP", csv_file, re.IGNORECASE):
-        return "domain-ip"
+        return "ip-port"
     elif re.search(r"Domain", csv_file, re.IGNORECASE):
         return "domain"
     else:
@@ -115,7 +117,7 @@ def process_and_submit_to_misp(misp, case_str, csv_files_created):
     console.print(f"[bold]CSV files created: {csv_files_created}[/bold]")
 
     attribute_type_mapping = {
-        "ip": ("ip-src", "ip-src", "Network activity", False, ["tlp:green"]),
+        "ip": ("ip", "ip-dst", "Network activity", False, ["tlp:green"]),
         "malicious_score": ("malicious_score", "text", "Antivirus detection", False, ["tlp:white"]),
         "owner": ("owner", "text", "Other", False, ["tlp:white"]),
         "location": ("location", "text", "Other", False, ["tlp:white"]),
@@ -126,6 +128,7 @@ def process_and_submit_to_misp(misp, case_str, csv_files_created):
         "url": ("url", "url", "Network activity", False, ["tlp:green"]),
         "title": ("title", "text", "Other", False, ["tlp:white"]),
         "final_Url": ("final_Url", "text", "Other", False, ["tlp:white"]),
+        "filename": ("filename", "text", "Other", False, ["tlp:white"]),
         "first_scan": ("first_scan", "datetime", "Other", False, ["tlp:white"]),
         "info": ("info", "text", "Other", False, ["tlp:white"]),
         "sha256": ("sha256", "sha256", "Payload delivery", False, ["tlp:green"]),
