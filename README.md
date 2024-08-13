@@ -1,87 +1,102 @@
 <p align="center">
-    <img src="assets/logo.png" alt= “VirusTotal_tool_logo” width="250" height="250">
+    <img src="assets/VTTools Logo.webp" alt="VirusTotal Tool Logo" width="250" height="250">
 </p>
 
 # THA-CERT VirusTotal Analysis Tool Documentation
 
-Welcome to the VirusTotal analysis tool by THA-CERT !
+Welcome to the VirusTotal Analysis Tool by THA-CERT!
 
-This script will retrieve analysis information for a set of values (IP/Hash/URL/Domain) from VirusTotal.
+This tool retrieves analysis information for a set of values (IP addresses, hashes, URLs, domains) from VirusTotal. It simplifies and speeds up the analysis of files, such as log files, by automatically querying VirusTotal for any relevant data.
 
-To use the tool, provide your VirusTotal API key and the values you want to analyze.
+## Goals
 
-The tool supports input from two sources, files and command line.
+The primary goal of this tool is to assist in the identification and analysis of IP addresses, hashes, and URLs within files using regular expressions (RegEx). The tool checks whether these objects have been previously submitted to VirusTotal and retrieves their reports. If an object has not been submitted, the tool will not submit it for analysis.
 
-## What goals ?
+This tool is particularly useful for:
 
-This tool is used to search files or/and input with RegEx to find Objects(IP adresses, Hashes and Urls) and ask VirusTotal for a report if the Object was already submitted. If not it won't submit it for review.
+- Investigating files during incident response or threat hunting.
+- Quickly identifying suspicious elements in large datasets.
+- Simplifying data export to platforms like MISP, StrangeBee's TheHive, or others.
 
-The goal is to make easier and faster analysis on files such as log files or other files encountered while investigating.
+Results are sorted by object category and saved into two files:
+1. **TXT File**: A condensed version of the VirusTotal report, highlighting the most relevant findings.
+2. **CSV File**: A detailed report that can be converted to JSON for easy integration with other tools.
 
-All you have to do is follow the guide and then grab a coffee while waiting for your analysis to be done !
+If desired, the results can also be sent directly to MISP using the script’s options, with Docker integration available by default.
 
-All results will be sorted by Objects category and on two files, one is a txt containing a condensed version of a VT report helping people getting only interesting results. And the other is a CSV file, that can be translated to JSON to help sending the data , to MISP, Strangebee's The Hive or others.
+## Installation
 
-Then if you want you could send all the results to MISP by following the script options, and by default using the docker image.
+### Prerequisites
 
-## How to use ?
+Ensure you have Python 3.9 or later installed on your system.
 
-### Installation
+### Steps
 
-To install and run VT_Tools, you will need to have python 3.9 or more installed on your system.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/TheoBhang/Analysis_Tool
+   ```
 
-- Clone the repository:
-  - git clone <https://github.com/TheoBhang/Analysis_Tool>
-- Install all depedencies with:
-  - pip install -r requirements.txt
+2. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-Then the script should be ready to launch
+3. The script is now ready to run!
 
-### Usage
+## Usage
 
-#### Locally
+### Command-Line Interface
 
-```md
+The tool can be used in several ways, depending on your needs:
+
+#### Basic Usage
+
+```bash
 usage: vt3_tools.py [-h] [--input_file INPUT_FILE] [--case_id CASE_ID] [--api_key API_KEY]
                     [--api_key_file API_KEY_FILE] [--proxy PROXY]
                     [values ...]
-
-positional arguments:
-  values                The values to analyze. Can be IP addresses, hashes, URLs, or domains.
-
-options:
-  -h, --help            show this help message and exit
-  --input_file INPUT_FILE, -f INPUT_FILE
-                        Input file containing values to analyze.
-  --case_id CASE_ID, -c CASE_ID
-                        ID for the case to create (Or MISP event UUID to create or update)
-  --api_key API_KEY, -a API_KEY
-                        VirusTotal API key, default VTAPIKEY env var
-  --api_key_file API_KEY_FILE, -af API_KEY_FILE
-                        VirusTotal API key in a file.
-  --proxy PROXY, -p PROXY
-                        Proxy to use for requests.
 ```
 
-And run :
+- **values**: The values to analyze (IP addresses, hashes, URLs, domains).
 
-```sh
-# For any help just launch
-python3 .\vt3_tools.py -h
+#### Options
 
-# By Default if you don't specify a VT API key the script will search in the environment variables.
-python3 .\vt3_tools.py --case_id <Case ID> [INPUT_VALUE]
+- `-h, --help`: Show this help message and exit.
+- `-f, --input_file INPUT_FILE`: Specify the input file containing values to analyze.
+- `-c, --case_id CASE_ID`: Specify the case ID (or MISP event UUID) for which to create or update a report.
+- `-a, --api_key API_KEY`: Provide the VirusTotal API key (if not set as an environment variable).
+- `-af, --api_key_file API_KEY_FILE`: Path to a file containing the VirusTotal API key.
+- `-p, --proxy PROXY`: Specify a proxy to use for requests.
 
-# For Input based analysis with an API KEY:
-python3 .\vt3_tools.py --api_key <Your VT APIKEY> --case_id <Case ID> [INPUT_VALUE]
+### Examples
 
-# For File based analysis:
-python3 .\vt3_tools.py --api_key <Your VT APIKEY> --case_id <Case ID> --input_file <Path to file>
+1. **Display help:**
+   ```bash
+   python3 vt3_tools.py -h
+   ```
 
-# You can also use your api key from a file:
-python3 .\vt3_tools.py --api_key_file <Path to APIKEY file> --case_id <Case ID> --input_file <Path to file>
+2. **Basic Analysis:**
+   ```bash
+   python3 vt3_tools.py --case_id <Case ID> [INPUT_VALUE]
+   ```
 
-# if you have to use a proxy to connect to the internet you can use the --proxy option
-python3 .\vt3_tools.py --api_key <Your VT APIKEY> --case_id <Case ID> --input_file <Path to file> --proxy <Proxy URL>
-```
+3. **Input-based Analysis with API Key:**
+   ```bash
+   python3 vt3_tools.py --api_key <Your VT APIKEY> --case_id <Case ID> [INPUT_VALUE]
+   ```
 
+4. **File-based Analysis:**
+   ```bash
+   python3 vt3_tools.py --api_key <Your VT APIKEY> --case_id <Case ID> --input_file <Path to file>
+   ```
+
+5. **Using API Key from a File:**
+   ```bash
+   python3 vt3_tools.py --api_key_file <Path to APIKEY file> --case_id <Case ID> --input_file <Path to file>
+   ```
+
+6. **Using a Proxy:**
+   ```bash
+   python3 vt3_tools.py --api_key <Your VT APIKEY> --case_id <Case ID> --input_file <Path to file> --proxy <Proxy URL>
+   ```
