@@ -148,8 +148,7 @@ def get_user_choice():
         choice = get_initial_choice()
 
         if choice == "y":
-            value_type = get_analysis_type()
-            return [value_type]
+            return [get_analysis_type()]
         return ["ips", "domains", "urls", "hashes"]
 
     except InvalidResponse:
