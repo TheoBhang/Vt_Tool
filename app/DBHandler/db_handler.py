@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS hashes (
     sha256 TEXT,
     ssdeep TEXT,
     tlsh TEXT,
+    meaningful_name TEXT,
     names TEXT,
     type TEXT,
     type_probability TEXT
@@ -234,7 +235,7 @@ class DBHandler:
         """Insert hash data into the hashes table"""
         sql = """INSERT INTO hashes(hash, malicious_score, 
                 total_scans, tags,threat_category,threat_labels,link, extension, size, md5, sha1, sha256, ssdeep, tlsh, names, type, type_probability)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
         try:
             cur = conn.cursor()
 
@@ -262,6 +263,7 @@ class DBHandler:
                     hash_data.get("sha256"),
                     hash_data.get("ssdeep"),
                     hash_data.get("tlsh"),
+                    hash_data.get("meaningful_name"),
                     hash_data.get("names"),
                     hash_data.get("type"),
                     hash_data.get("type_probability"),
@@ -570,8 +572,9 @@ class DBHandler:
                 "ssdeep": report[13],
                 "tlsh": report[14],
                 "names": report[15],
-                "type": report[16],
-                "type_probability": report[17],
+                "meaningful_name": report[16],
+                "type": report[17],
+                "type_probability": report[18],
             }
             
         )

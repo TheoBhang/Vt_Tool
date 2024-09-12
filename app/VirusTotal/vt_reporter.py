@@ -219,6 +219,7 @@ class VTReporter:
                 "sha256": getattr(report, "sha256", "No sha256 found"),
                 "ssdeep": getattr(report, "ssdeep", "No ssdeep found"),
                 "tlsh": getattr(report, "tlsh", "No tlsh found"),
+                "meaningful_name": getattr(report, "meaningful_name", "No meaningful name found"),
                 "names": ", ".join(getattr(report, "names", "No names found")),
                 "type": report.trid[0]["file_type"]
                 if hasattr(report, "trid")

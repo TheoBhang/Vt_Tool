@@ -128,7 +128,7 @@ def process_and_submit_to_misp(misp, case_str, csv_files_created):
         "url": ("url", "url", "Network activity", False, ["tlp:green"]),
         "title": ("title", "text", "Other", False, ["tlp:white"]),
         "final_Url": ("final_Url", "text", "Other", False, ["tlp:white"]),
-        "filename": ("filename", "text", "Other", False, ["tlp:white"]),
+        "meaningful_name": ("filename", "text", "Other", False, ["tlp:white"]),
         "first_scan": ("first_scan", "datetime", "Other", False, ["tlp:white"]),
         "info": ("info", "text", "Other", False, ["tlp:white"]),
         "sha256": ("sha256", "sha256", "Payload delivery", False, ["tlp:green"]),
