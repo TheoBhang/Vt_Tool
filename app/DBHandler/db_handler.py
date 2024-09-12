@@ -234,7 +234,7 @@ class DBHandler:
     def insert_hash_data(self, conn, hash_data):
         """Insert hash data into the hashes table"""
         sql = """INSERT INTO hashes(hash, malicious_score, 
-                total_scans, tags,threat_category,threat_labels,link, extension, size, md5, sha1, sha256, ssdeep, tlsh, names, type, type_probability)
+                total_scans, tags,threat_category,threat_labels,link, extension, size, md5, sha1, sha256, ssdeep, tlsh, meaningful_name, names, type, type_probability)
                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
         try:
             cur = conn.cursor()
@@ -571,8 +571,8 @@ class DBHandler:
                 "sha256": report[12],
                 "ssdeep": report[13],
                 "tlsh": report[14],
-                "names": report[15],
-                "meaningful_name": report[16],
+                "meaningful_name": report[15],
+                "names": report[16],
                 "type": report[17],
                 "type_probability": report[18],
             }
