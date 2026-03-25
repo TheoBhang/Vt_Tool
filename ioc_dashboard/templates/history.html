@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}HISTORIQUE MISP - CTI SOC{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 1rem;">
+  <div>
+    <h2 style="font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; letter-spacing: 0.05em; margin-bottom: 0.2rem;">HISTORIQUE MISP</h2>
+    <p style="color: #888; font-size: 0.9rem;">Derniers événements synchronisés</p>
+  </div>
+  <div style="text-align: right;">
+    <a href="/" style="color: #aaa; text-decoration: none; font-size: 0.8rem; letter-spacing: 0.1em;">&larr; RETOUR DASHBOARD</a>
+  </div>
+</div>
+
+<div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden;">
+  {% if history and history|length > 0 %}
+  <table>
+    <thead>
+      <tr>
+        <th># ID</th>
+        <th>TITRE</th>
+        <th>DATE</th>
+        <th>IOCs</th>
+        <th>MISP</th>
+        <th style="text-align: right;">ACTION</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for event in history %}
+      <tr>
+        <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #888;">{{ event.id }}</td>
+        <td style="color: #ddd;">{{ event.info }}</td>
+        <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #aaa;">{{ event.date }}</td>
+        <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">{{ event.nb_attributes }}</td>
+        <td>
+          {% if event.lien_misp %}
+            <a href="{{ event.lien_misp }}" target="_blank" style="color: #4da6ff; text-decoration: none; font-size: 0.85rem;">&rarr; MISP</a>
+          {% endif %}
+        </td>
+        <td style="text-align: right;">
+          <form method="POST" action="/delete/{{ event.id }}" style="display: inline;" onsubmit="return confirm('Supprimer l\'événement MISP #{{ event.id }} ?');">
+            <button type="submit" class="btn-danger">🗑 Supprimer</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="padding: 4rem 2rem; text-align: center;">
+    <h3 style="font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: #555; letter-spacing: 0.1em;">AUCUN ÉVÉNEMENT MISP</h3>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,86 @@
+/* Fond et reset */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; color: #fff; font-family: 'Inter', sans-serif; min-height: 100vh; }
+
+/* Formes métalliques de fond */
+.bg-shapes { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.shape-topleft  { position: absolute; top: -10%; left: -8%; width: 40%; opacity: 0.9; }
+.shape-bottomright { position: absolute; bottom: -10%; right: -5%; width: 55%; opacity: 0.85; }
+.glow-topleft { position: absolute; top: 0; right: 0; width: 500px; height: 400px;
+  background: radial-gradient(ellipse at 85% 10%, rgba(255,255,255,0.10) 0%, transparent 65%); }
+
+/* Header HACKATHON */
+.site-header { position: relative; z-index: 10; text-align: center; padding: 2rem 0 0.5rem; }
+.header-title { display: block; font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(4rem, 10vw, 9rem); letter-spacing: 0.05em; color: #fff;
+  text-shadow: 0 0 80px rgba(255,255,255,0.15); }
+.header-subtitle { display: block; font-family: 'Inter', sans-serif; font-weight: 300;
+  font-size: clamp(0.7rem, 1.5vw, 1rem); letter-spacing: 0.6em; color: #666;
+  text-transform: uppercase; margin-top: -0.5rem; }
+
+/* Contenu principal */
+.content { position: relative; z-index: 10; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+/* KPI Cards */
+.kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin: 2rem 0; }
+.kpi-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; padding: 1.5rem 1rem; text-align: center; }
+.kpi-card .kpi-number { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; line-height: 1; }
+.kpi-card .kpi-label { font-size: 0.7rem; letter-spacing: 0.2em; color: #666; margin-top: 0.4rem; }
+.kpi-card.malicious { border-bottom: 3px solid #e53e3e; }
+.kpi-card.suspect   { border-bottom: 3px solid #dd6b20; }
+.kpi-card.clean     { border-bottom: 3px solid #38a169; }
+.kpi-card.unknown   { border-bottom: 3px solid #555; }
+.kpi-card.total     { border-bottom: 3px solid #fff; }
+
+/* Badges */
+.badge { padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.7rem;
+  font-weight: 400; letter-spacing: 0.15em; font-family: 'JetBrains Mono', monospace; }
+.badge-red    { background: rgba(229,62,62,0.15);  color: #fc8181; border: 1px solid rgba(229,62,62,0.4); }
+.badge-orange { background: rgba(221,107,32,0.15); color: #f6ad55; border: 1px solid rgba(221,107,32,0.4); }
+.badge-green  { background: rgba(56,161,105,0.15); color: #68d391; border: 1px solid rgba(56,161,105,0.4); }
+.badge-grey   { background: rgba(85,85,85,0.15);   color: #aaa;    border: 1px solid rgba(85,85,85,0.4); }
+
+/* Tableau */
+table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+thead th { font-size: 0.65rem; letter-spacing: 0.2em; color: #555; text-transform: uppercase;
+  padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); text-align: left; }
+tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
+tbody tr:hover { background: rgba(255,255,255,0.03); }
+tbody td { padding: 0.9rem 1rem; font-size: 0.9rem; }
+td.ip-cell { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #ccc; }
+
+/* Toggle MISP */
+.misp-toggle { display: flex; align-items: center; gap: 1rem; cursor: pointer; margin: 1.5rem 0; }
+.toggle-track { width: 48px; height: 26px; background: #222; border-radius: 13px;
+  position: relative; transition: background 0.2s; border: 1px solid #333; flex-shrink: 0; }
+.misp-toggle input:checked ~ .toggle-track { background: #276749; border-color: #38a169; }
+.toggle-track::after { content: ''; position: absolute; width: 20px; height: 20px;
+  background: #fff; border-radius: 50%; top: 2px; left: 3px; transition: transform 0.2s; }
+.misp-toggle input:checked ~ .toggle-track::after { transform: translateX(22px); }
+.misp-toggle input { display: none; }
+.toggle-label strong { display: block; font-size: 0.9rem; font-weight: 400; }
+.toggle-label small { color: #555; font-size: 0.75rem; }
+
+/* Bouton principal */
+.btn-primary { width: 100%; padding: 1rem; background: #fff; color: #000;
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.2em;
+  border: none; border-radius: 6px; cursor: pointer; transition: opacity 0.2s; margin-top: 1.5rem; }
+.btn-primary:hover { opacity: 0.85; }
+
+/* Bouton danger (supprimer) */
+.btn-danger { background: transparent; color: #e53e3e; border: 1px solid rgba(229,62,62,0.3);
+  padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
+.btn-danger:hover { background: rgba(229,62,62,0.1); }
+
+/* Alertes flash */
+.alert { padding: 0.9rem 1.2rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9rem; }
+.alert-error   { background: rgba(229,62,62,0.1);  border: 1px solid rgba(229,62,62,0.3);  color: #fc8181; }
+.alert-warning { background: rgba(221,107,32,0.1); border: 1px solid rgba(221,107,32,0.3); color: #f6ad55; }
+.alert-success { background: rgba(56,161,105,0.1); border: 1px solid rgba(56,161,105,0.3); color: #68d391; }
+
+/* Mode badge */
+.mode-badge { display: inline-block; padding: 0.2rem 0.8rem; border-radius: 4px;
+  font-size: 0.7rem; letter-spacing: 0.15em; font-family: 'JetBrains Mono', monospace; }
+.mode-local { background: rgba(85,85,85,0.2); color: #aaa; border: 1px solid #444; }
+.mode-misp  { background: rgba(56,161,105,0.15); color: #68d391; border: 1px solid rgba(56,161,105,0.4); }

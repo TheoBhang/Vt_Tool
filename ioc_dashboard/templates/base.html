@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <title>{% block title %}CTI SOC{% endblock %}</title>
+</head>
+<body>
+  <!-- Formes métalliques en fond fixe -->
+  <div class="bg-shapes">
+    <img src="/static/img/bg_shapes.svg" class="shape-topleft" alt="">
+    <img src="/static/img/bg_shapes.svg" class="shape-bottomright" alt="">
+    <div class="glow-topleft"></div>
+  </div>
+
+  <!-- Branding HACKATHON -->
+  <header class="site-header">
+    <span class="header-title">HACKATHON</span>
+    <span class="header-subtitle">GROUPE  2</span>
+  </header>
+
+  <main class="content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

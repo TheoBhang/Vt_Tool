@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}RÉSULTATS - CTI SOC{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 1rem;">
+  <div>
+    <h2 style="font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; letter-spacing: 0.05em; margin-bottom: 0.2rem;">RAPPORT D'ANALYSE</h2>
+    <p style="color: #888; font-size: 0.9rem;">Fichier : <strong style="color: #fff;">{{ filename }}</strong></p>
+  </div>
+  <div style="text-align: right;">
+    {% if misp_mode %}
+      <span class="mode-badge mode-misp" style="margin-bottom: 0.5rem; display: inline-block;">MISP SYNC</span>
+    {% else %}
+      <span class="mode-badge mode-local" style="margin-bottom: 0.5rem; display: inline-block;">CLIENT ONLY</span>
+    {% endif %}
+    <br>
+    <a href="/" style="color: #aaa; text-decoration: none; font-size: 0.8rem; letter-spacing: 0.1em;">&larr; NOUVELLE ANALYSE</a>
+  </div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card total">
+    <div class="kpi-number">{{ summary.total }}</div>
+    <div class="kpi-label">TOTAL IOCS</div>
+  </div>
+  <div class="kpi-card malicious">
+    <div class="kpi-number" style="color: #fc8181;">{{ summary.malicious }}</div>
+    <div class="kpi-label">MALICIOUS</div>
+  </div>
+  <div class="kpi-card suspect">
+    <div class="kpi-number" style="color: #f6ad55;">{{ summary.suspect }}</div>
+    <div class="kpi-label">SUSPECT</div>
+  </div>
+  <div class="kpi-card clean">
+    <div class="kpi-number" style="color: #68d391;">{{ summary.clean }}</div>
+    <div class="kpi-label">CLEAN</div>
+  </div>
+  <div class="kpi-card unknown">
+    <div class="kpi-number" style="color: #aaa;">{{ summary.unknown }}</div>
+    <div class="kpi-label">UNKNOWN</div>
+  </div>
+</div>
+
+{% if misp_mode and event_info and event_info.url %}
+<div style="margin: 2rem 0; text-align: right;">
+  <a href="{{ event_info.url }}" target="_blank" class="btn-primary" style="display: inline-block; width: auto; font-size: 1rem; padding: 0.8rem 1.5rem; text-decoration: none;">
+    VOIR L'ÉVÉNEMENT MISP &rarr;
+  </a>
+</div>
+{% endif %}
+
+<div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden; margin-top: 2rem;">
+  <table>
+    <thead>
+      <tr>
+        <th>IP</th>
+        <th>SCORE</th>
+        <th>STATUT</th>
+        <th style="text-align: right;">VIRUSTOTAL</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ioc in results %}
+      <tr>
+        <td class="ip-cell">{{ ioc.ip }}</td>
+        <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">{{ ioc.score }}</td>
+        <td><span class="badge badge-{{ ioc.badge }}">{{ ioc.status }}</span></td>
+        <td style="text-align: right;">
+          {% if ioc.link %}
+            <a href="{{ ioc.link }}" target="_blank" style="color: #4da6ff; text-decoration: none; font-size: 0.85rem;">&rarr; VT</a>
+          {% else %}
+            <span style="color: #555; font-size: 0.85rem;">N/A</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="4" style="text-align: center; padding: 2rem; color: #666;">Aucun IoC trouvé.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

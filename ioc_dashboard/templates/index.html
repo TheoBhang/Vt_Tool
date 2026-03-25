@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}ANALYSE IOC - CTI SOC{% endblock %}
+
+{% block content %}
+<section class="upload-section" style="max-width: 600px; margin: 0 auto; text-align: center;">
+  <h2 style="font-family: 'Bebas Neue', sans-serif; font-size: 3.5rem; letter-spacing: 0.1em; color: #fff; margin-bottom: 0.5rem;">ANALYSE IOC</h2>
+  <p style="font-family: 'Inter', sans-serif; font-weight: 300; color: #aaa; margin-bottom: 2rem;">Déposez votre rapport d'incident SOC</p>
+
+  <form method="POST" action="/analyze" enctype="multipart/form-data">
+    <div class="file-drop-area" style="border: 2px dashed rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 3rem 2rem; background: rgba(255, 255, 255, 0.02); margin-bottom: 1.5rem; transition: border-color 0.3s; position: relative;">
+      <input type="file" name="file" accept=".txt" required style="position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 2;">
+      <div style="pointer-events: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="rgba(255, 255, 255, 0.5)" viewBox="0 0 24 24" style="margin-bottom: 1rem;"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+        <p style="color: #ccc; font-size: 0.95rem;">Glissez votre fichier <strong>.txt</strong> ou cliquez pour parcourir</p>
+      </div>
+    </div>
+
+    <label class="misp-toggle">
+      <input type="checkbox" name="send_to_misp" id="misp_toggle_checkbox" checked>
+      <span class="toggle-track"></span>
+      <span class="toggle-label" style="text-align: left;">
+        <strong>Envoyer vers MISP</strong>
+        <small>Désactivez pour une analyse client-side uniquement</small>
+      </span>
+    </label>
+
+    <button type="submit" class="btn-primary">ANALYSER</button>
+  </form>
+
+  <div style="margin-top: 2.5rem; display: flex; justify-content: space-between; align-items: center;">
+    <a href="/history" style="color: #666; text-decoration: none; font-size: 0.85rem; letter-spacing: 0.1em; transition: color 0.2s;">HISTORIQUE MISP &rarr;</a>
+    <span id="mode_badge" class="mode-badge mode-misp">🟢 Synchronisation MISP activée</span>
+  </div>
+</section>
+
+<script>
+  const fileInput = document.querySelector('input[type="file"]');
+  const dropArea = document.querySelector('.file-drop-area');
+
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      dropArea.style.borderColor = 'rgba(255,255,255,0.6)';
+      const p = dropArea.querySelector('p');
+      p.innerHTML = `<strong style="color: #fff;">${e.target.files[0].name}</strong> sélectionné`;
+    }
+  });
+
+  const toggle = document.getElementById('misp_toggle_checkbox');
+  const badge = document.getElementById('mode_badge');
+
+  toggle.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      badge.className = 'mode-badge mode-misp';
+      badge.textContent = '🟢 Synchronisation MISP activée';
+    } else {
+      badge.className = 'mode-badge mode-local';
+      badge.textContent = '🔴 Mode local uniquement';
+    }
+  });
+</script>
+{% endblock %}

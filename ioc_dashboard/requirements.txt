@@ -1,0 +1,4 @@
+flask>=3.0.0
+pymisp>=2.4.170
+python-dotenv>=1.0.0
+gunicorn>=21.0.0
