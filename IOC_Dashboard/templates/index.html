@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IOC Dashboard — SOC</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="page-upload">
+
+    <header class="site-header">
+      <div class="header-logo">
+        <span class="logo-icon">⬡</span>
+        <span class="logo-text">IOC<span class="logo-accent">DASH</span></span>
+      </div>
+      <nav class="header-nav">
+        <a href="/" class="nav-link active">Analyse</a>
+        <a href="/history" class="nav-link">Historique</a>
+      </nav>
+    </header>
+
+    <main class="upload-main">
+      <div class="upload-card">
+        <div class="upload-badge">CERT · SOC · THREAT INTELLIGENCE</div>
+        <h1 class="upload-title">Analyse de Rapport<br><span class="title-accent">d'Incident</span></h1>
+        <p class="upload-desc">
+          Déposez un rapport texte pour extraire automatiquement les IoC,
+          les enrichir via VirusTotal et les centraliser dans MISP.
+        </p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">
+              <span class="alert-icon">{% if category == 'error' %}✕{% else %}✓{% endif %}</span>
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endwith %}
+
+        <form action="/analyze" method="POST" enctype="multipart/form-data" class="upload-form">
+          <label class="drop-zone" id="dropZone">
+            <input type="file" name="report" id="fileInput" accept=".txt" required>
+            <div class="drop-icon">⬆</div>
+            <div class="drop-label" id="dropLabel">Glissez un fichier .txt ou cliquez</div>
+            <div class="drop-hint">Format accepté : .txt · Rapport d'incident SOC</div>
+          </label>
+
+          <button type="submit" class="btn-analyze">
+            <span class="btn-icon">▶</span>
+            Lancer l'analyse
+          </button>
+        </form>
+
+        <div class="pipeline-steps">
+          <div class="step">
+            <span class="step-num">01</span>
+            <span class="step-label">Extraction IoC</span>
+          </div>
+          <div class="step-arrow">→</div>
+          <div class="step">
+            <span class="step-num">02</span>
+            <span class="step-label">VirusTotal</span>
+          </div>
+          <div class="step-arrow">→</div>
+          <div class="step">
+            <span class="step-num">03</span>
+            <span class="step-label">MISP</span>
+          </div>
+          <div class="step-arrow">→</div>
+          <div class="step">
+            <span class="step-num">04</span>
+            <span class="step-label">Dashboard</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <script>
+    const input = document.getElementById('fileInput');
+    const label = document.getElementById('dropLabel');
+    input.addEventListener('change', () => {
+      label.textContent = input.files[0] ? input.files[0].name : 'Glissez un fichier .txt ou cliquez';
+    });
+  </script>
+</body>
+</html>

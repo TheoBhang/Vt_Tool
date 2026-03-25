@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Résultats — IOC Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="page-results">
+
+    <!-- ZONE 1 — Barre nav -->
+    <header class="site-header">
+      <div class="header-logo">
+        <span class="logo-icon">⬡</span>
+        <span class="logo-text">IOC<span class="logo-accent">DASH</span></span>
+      </div>
+      <div class="header-meta">
+        <span class="header-file">📄 {{ filename }}</span>
+      </div>
+      <nav class="header-nav">
+        <a href="/" class="nav-link">← Nouvelle analyse</a>
+        <a href="/history" class="nav-link">Historique</a>
+      </nav>
+    </header>
+
+    <main class="results-main">
+
+      <!-- ZONE 2 — KPI cards (visibles sans scroller) -->
+      <section class="kpi-section">
+        <div class="kpi-card kpi-total">
+          <div class="kpi-value">{{ summary.total }}</div>
+          <div class="kpi-label">Total IPs</div>
+        </div>
+        <div class="kpi-card kpi-malicious">
+          <div class="kpi-value">{{ summary.malicious }}</div>
+          <div class="kpi-label">Malveillants</div>
+        </div>
+        <div class="kpi-card kpi-suspect">
+          <div class="kpi-value">{{ summary.suspect }}</div>
+          <div class="kpi-label">Suspects</div>
+        </div>
+        <div class="kpi-card kpi-clean">
+          <div class="kpi-value">{{ summary.clean }}</div>
+          <div class="kpi-label">Propres</div>
+        </div>
+        <div class="kpi-card kpi-unknown">
+          <div class="kpi-value">{{ summary.unknown }}</div>
+          <div class="kpi-label">Inconnus</div>
+        </div>
+      </section>
+
+      <!-- ZONE 3 — Lien Event MISP -->
+      <section class="misp-link-section">
+        <span class="misp-label">Source de vérité :</span>
+        <a href="{{ misp_url }}/events/view/{{ event_info.id }}"
+           target="_blank" class="misp-event-link">
+          ⬡ MISP Event #{{ event_info.id }} — {{ event_info.info }}
+          <span class="ext-icon">↗</span>
+        </a>
+      </section>
+
+      <!-- ZONE 4 — Tableau des IPs -->
+      <section class="table-section">
+        <div class="table-header">
+          <h2 class="table-title">Adresses IP analysées</h2>
+          <span class="table-count">{{ results | length }} entrée(s)</span>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="ioc-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Adresse IP</th>
+                <th>Score VT</th>
+                <th>Statut</th>
+                <th>Lien VT</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ioc in results %}
+              <tr class="row-{{ ioc.status | lower }}">
+                <td class="col-num">{{ loop.index }}</td>
+                <td class="col-ip">
+                  <code>{{ ioc.value }}</code>
+                </td>
+                <td class="col-score">{{ ioc.malicious_score }}</td>
+                <td class="col-status">
+                  <span class="badge {{ ioc.badge }}">{{ ioc.status }}</span>
+                </td>
+                <td class="col-link">
+                  {% if ioc.link %}
+                  <a href="{{ ioc.link }}" target="_blank" class="vt-link">
+                    Voir sur VT ↗
+                  </a>
+                  {% else %}
+                  <span class="no-link">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</body>
+</html>

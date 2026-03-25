@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Historique — IOC Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="page-history">
+
+    <header class="site-header">
+      <div class="header-logo">
+        <span class="logo-icon">⬡</span>
+        <span class="logo-text">IOC<span class="logo-accent">DASH</span></span>
+      </div>
+      <nav class="header-nav">
+        <a href="/" class="nav-link">← Nouvelle analyse</a>
+        <a href="/history" class="nav-link active">Historique</a>
+      </nav>
+    </header>
+
+    <main class="history-main">
+      <div class="history-header">
+        <h1 class="history-title">Historique des <span class="title-accent">Analyses</span></h1>
+        <span class="history-count">{{ events | length }} événement(s) MISP</span>
+      </div>
+
+      {% if not events %}
+      <div class="empty-state">
+        <div class="empty-icon">◌</div>
+        <p>Aucun événement MISP trouvé.</p>
+        <a href="/" class="btn-analyze" style="display:inline-block;text-decoration:none;">
+          Lancer une première analyse
+        </a>
+      </div>
+      {% else %}
+      <div class="table-wrapper">
+        <table class="ioc-table history-table">
+          <thead>
+            <tr>
+              <th>#ID</th>
+              <th>Titre de l'incident</th>
+              <th>Date</th>
+              <th>IoC (IPs)</th>
+              <th>Lien MISP</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for event in events %}
+            <tr>
+              <td class="col-num">{{ event.id }}</td>
+              <td class="col-info">{{ event.info }}</td>
+              <td class="col-date">{{ event.date }}</td>
+              <td class="col-nb">
+                <span class="badge badge-unknown">{{ event.nb_attributes }}</span>
+              </td>
+              <td class="col-link">
+                <a href="{{ event.misp_link }}" target="_blank" class="vt-link">
+                  Voir dans MISP ↗
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </main>
+
+  </div>
+</body>
+</html>
