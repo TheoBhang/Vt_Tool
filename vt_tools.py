@@ -268,7 +268,7 @@ def get_remaining_quota(api_key: str, proxy: str = None, args: argparse.Namespac
             session.proxies.update({"http": proxy, "https": proxy})
 
         try:
-            response = session.get(url, headers=headers)
+            response = session.get(url, headers=headers, verify=False)
             response.raise_for_status()  # Will raise an exception for HTTP error codes
         except RequestException as e:
             logging.error(f"Error retrieving VT Quota: {e}")
