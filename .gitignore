@@ -6,3 +6,4 @@
 .env
 vttools.sqlite
 __pycache__/
+.venv/
