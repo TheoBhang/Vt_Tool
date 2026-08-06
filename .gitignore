@@ -8,3 +8,7 @@ vttools.sqlite
 __pycache__/
 .venv/
 *.tldextract.json.lock
+
+# Claude Code
+.claude/
+CLAUDE.md
