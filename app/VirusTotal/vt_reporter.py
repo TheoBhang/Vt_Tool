@@ -314,16 +314,6 @@ class VTReporter:
             "type_probability": report.trid[0]["probability"] if hasattr(report, "trid") else NOT_FOUND_ERROR,
         })
 
-    def populate_threat_classification(self, value_object, report):
-        """Populates threat category and labels for hashes."""
-        try:
-            if report.popular_threat_classification:
-                classification = report.popular_threat_classification
-                value_object["threat_category"] = ", ".join(category['value'] for category in classification.get('popular_threat_category', []))
-                value_object["threat_labels"] = classification.get("suggested_threat_label", NOT_FOUND_ERROR)
-        except Exception as e:
-            logger.error(f"Error populating threat classification: {e}")
-
     def get_rows(self, value_type, value, report):
         """
         Get the rows for a value and its report.

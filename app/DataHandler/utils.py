@@ -3,7 +3,6 @@ import logging
 from pathlib import Path
 from typing import List, Optional, Literal, Union
 from datetime import datetime, timezone  # for working with dates and times
-from pytz import timezone as pytz_timezone
 
 from rich.console import Console
 from rich.prompt import Prompt, InvalidResponse
