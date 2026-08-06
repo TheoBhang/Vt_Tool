@@ -1,15 +1,7 @@
-click
 prettytable
-setuptools
 vt-py
-ipaddress
 python-dotenv
 pymisp
-urllib3
 rich
-tenacity
-pytz
 validators
 tldextract
-hashid
-pydantic
