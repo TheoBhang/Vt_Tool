@@ -25,6 +25,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -r requirements.txt
-      - run: pip install ruff
+      - run: pip install ruff==0.16.1
       - run: ruff check .
       - run: python -m unittest discover -s tests -t . -v

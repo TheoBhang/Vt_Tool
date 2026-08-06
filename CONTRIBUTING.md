@@ -26,6 +26,7 @@ Set up a virtual environment and install dependencies:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+pip install ruff==0.16.1
 ```
 
 Switch to a feature branch:
