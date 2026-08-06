@@ -1183,6 +1183,9 @@ class IdentifyObjectTypeTests(unittest.TestCase):
         self.assertEqual(identify_object_type("000001_URL_Analysis_x.csv"), "url")
         self.assertEqual(identify_object_type("000001_IP_Analysis_x.csv"), "ip-port")
         self.assertEqual(identify_object_type("000001_Domains_Analysis_x.csv"), "domain-ip")
+        # Lowercase "hashes" only matches r"Hash" via re.IGNORECASE, so this
+        # assertion is the one that actually exercises case-insensitivity.
+        self.assertEqual(identify_object_type("000001_hashes_analysis_x.csv"), "file")
 
     def test_unknown_filename_raises(self):
         with self.assertRaises(ValueError):
