@@ -687,6 +687,9 @@ class SchemaAndConnectionTests(unittest.TestCase):
         cur = conn.cursor()
         cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = {row[0] for row in cur.fetchall()}
+        # sqlite_sequence is an internal bookkeeping table SQLite creates
+        # automatically because the schema uses AUTOINCREMENT columns.
+        tables.discard("sqlite_sequence")
         self.assertEqual(tables, {"urls", "hashes", "ips", "domains"})
 
 
