@@ -90,13 +90,8 @@ class ValueReaderTests(unittest.TestCase):
         with mock.patch.object(sys, "stdin", piped_input):
             with mock.patch.object(piped_input, "isatty", return_value=False):
                 result = reader.read_from_stdin()
-        # ValueReader defines _accumulate_values twice (once for stdin,
-        # once for file read); the second definition wins and both paths
-        # share it, so the parsed lines land in self.dict_values_file
-        # instead of self.dict_values / the returned dict. This documents
-        # current behavior, not a claim that it's correct.
-        self.assertEqual(result, {})
-        self.assertIn("example.com", reader.dict_values_file["domains"])
+        self.assertIn("8.8.8.8", [ip for ip, _ in result["ips"]])
+        self.assertIn("example.com", result["domains"])
 
     def test_read_values_narrows_keys_and_reads_file(self):
         with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:

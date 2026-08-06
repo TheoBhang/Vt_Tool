@@ -329,9 +329,9 @@ class ValueReader:
         with open(self.fname, encoding="utf8") as file:
             for line in file:
                 line_values = value_extractor.sort_values(line, is_file=True)
-                self._accumulate_values(line_values)
+                self._accumulate_file_values(line_values)
 
-    def _accumulate_values(self, line_values: dict):
+    def _accumulate_file_values(self, line_values: dict):
         """
         Accumulate the extracted values into the dictionary.
 
