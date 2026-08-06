@@ -32,6 +32,20 @@ TEMPLATE_OPTIONS = {
     "3": "value,category,type,comment,to_ids,tag1,tag2",
 }
 
+# validate_value()'s returned type strings that we don't fetch/query for -
+# private/reserved IP ranges and hash types VirusTotal doesn't accept.
+UNSUPPORTED_VALUE_TYPES = {
+    "Private IPv4",
+    "Loopback IPv4",
+    "Unspecified IPv4",
+    "Link-local IPv4",
+    "Reserved IPv4",
+    "SHA-224",
+    "SHA-384",
+    "SHA-512",
+    "SSDEEP",
+}
+
 
 def setup_logging() -> None:
     """Setup logging configuration."""
@@ -561,17 +575,7 @@ def get_existing_report(init: Initializator, value: str, value_type: str, conn) 
     """Retrieve existing report for a value from the local database."""
     try:
         value_type_str = validate_value(init, value, value_type)
-        if value_type_str and value_type_str not in [
-            "Private IPv4",
-            "Loopback IPv4",
-            "Unspecified IPv4",
-            "Link-local IPv4",
-            "Reserved IPv4",
-            "SHA-224",
-            "SHA-384",
-            "SHA-512",
-            "SSDEEP",
-        ]:
+        if value_type_str and value_type_str not in UNSUPPORTED_VALUE_TYPES:
             return init.db_handler.get_report(value, value_type_str.upper(), conn)
     except Exception as e:
         console.print(
@@ -595,17 +599,7 @@ def analyze_value(init: Initializator, value_type: str, value: str) -> dict:
     """Analyze a single value using VirusTotal API."""
     try:
         value_type_str = validate_value(init, value, value_type)
-        if value_type_str and value_type_str not in [
-            "Private IPv4",
-            "Loopback IPv4",
-            "Unspecified IPv4",
-            "Link-local IPv4",
-            "Reserved IPv4",
-            "SHA-224",
-            "SHA-384",
-            "SHA-512",
-            "SSDEEP",
-        ]:
+        if value_type_str and value_type_str not in UNSUPPORTED_VALUE_TYPES:
             return init.reporter.get_report(value_type_str.upper(), value)
         else:
             console.print(f"[bold red]Invalid {value_type[:-1]}: {value}[/bold red]")

@@ -4,6 +4,24 @@ from unittest import mock
 import vt_tools
 
 
+class UnsupportedValueTypesTests(unittest.TestCase):
+    def test_contains_exact_expected_set(self):
+        self.assertEqual(
+            vt_tools.UNSUPPORTED_VALUE_TYPES,
+            {
+                "Private IPv4",
+                "Loopback IPv4",
+                "Unspecified IPv4",
+                "Link-local IPv4",
+                "Reserved IPv4",
+                "SHA-224",
+                "SHA-384",
+                "SHA-512",
+                "SSDEEP",
+            },
+        )
+
+
 class CountIocsTests(unittest.TestCase):
     def test_sums_list_lengths(self):
         self.assertEqual(
