@@ -70,13 +70,11 @@ class ExistsTests(unittest.TestCase):
         self.db.insert_ip_data(self.conn, IP_ROW)
         self.assertTrue(self.db.exists(self.conn, "ips", "8.8.8.8", "ip"))
 
-    def test_mostly_not_found_row_still_reads_as_existing(self):
-        # BUG (see task header, item 1): exists() checks for the literal
-        # "Not Found" but NOT_FOUND_ERROR is "Not found", so the ratio
-        # check that's supposed to treat heavily-empty cached rows as
-        # cache misses never triggers. This documents the current
-        # (buggy) behavior: even an almost-entirely-empty row reads as
-        # "exists" and will never be retried.
+    def test_mostly_not_found_row_reads_as_not_existing(self):
+        # A row where >=80% of its non-key columns are the NOT_FOUND_ERROR
+        # sentinel ("Not found") should be treated as a cache miss, so a
+        # value that previously came back empty gets retried instead of
+        # being served from a useless cached row forever.
         empty_row = dict(IP_ROW)
         for key in ("port", "protocol", "malicious_score", "total_scans",
                     "tags", "link", "owner", "location", "network",
@@ -84,7 +82,7 @@ class ExistsTests(unittest.TestCase):
             empty_row[key] = "Not found"
         empty_row["info-ip"] = {"regional_internet_registry": "Not found", "asn": "Not found"}
         self.db.insert_ip_data(self.conn, empty_row)
-        self.assertTrue(self.db.exists(self.conn, "ips", "8.8.8.8", "ip"))
+        self.assertFalse(self.db.exists(self.conn, "ips", "8.8.8.8", "ip"))
 
 
 class GetReportRoundTripTests(unittest.TestCase):
@@ -111,12 +109,7 @@ class GetReportRoundTripTests(unittest.TestCase):
         self.assertEqual(csv_row["malicious_score"], "7")
         self.assertEqual(csv_row["tags"], "trojan")
 
-    def test_domain_report_score_and_tag_fields_are_misaligned(self):
-        # BUG (see task header, item 2): for the domains table, populate_scores
-        # reads report[2]/report[3] (= ip/port columns) instead of the actual
-        # malicious_score/total_scans columns, and populate_tags reads
-        # report[4] (= protocol) instead of the tags column. This test pins
-        # down the current (incorrect) behavior rather than the intended one.
+    def test_domain_report_score_and_tag_fields_are_correct(self):
         domain_row = {
             "domain": "example.com", "ip": "1.2.3.4", "port": "443",
             "protocol": "https", "malicious_score": "9", "total_scans": "90",
@@ -131,15 +124,22 @@ class GetReportRoundTripTests(unittest.TestCase):
         self.db.insert_domain_data(self.conn, domain_row)
         report = self.db.get_report("example.com", "DOMAIN", self.conn)
         csv_row = report["csv_report"][0]
-        # Actual (buggy) values: malicious_score reads the "ip" column,
-        # tags reads the "protocol" column.
-        self.assertEqual(csv_row["malicious_score"], "1.2.3.4")
-        self.assertEqual(csv_row["tags"], "https")
+        self.assertEqual(csv_row["malicious_score"], "9")
+        self.assertEqual(csv_row["total_scans"], "90")
+        self.assertEqual(csv_row["tags"], "phishing")
+
+    def test_ip_report_score_and_tag_fields_are_correct(self):
+        self.db.insert_ip_data(self.conn, IP_ROW)
+        report = self.db.get_report("8.8.8.8", "PUBLIC IPV4", self.conn)
+        csv_row = report["csv_report"][0]
+        self.assertEqual(csv_row["malicious_score"], "0")
+        self.assertEqual(csv_row["total_scans"], "10")
+        self.assertEqual(csv_row["tags"], "Not found")
 
     def test_url_report_score_and_tag_fields_are_correct(self):
-        # populate_url_data() overwrites malicious_score/total_scans/tags
-        # afterward with the correct indices, masking the same underlying
-        # bug that affects domains/ips.
+        # populate_url_data() also sets malicious_score/total_scans/tags
+        # with its own (correct) indices, redundantly re-confirming what
+        # populate_scores()/populate_tags() already set.
         url_row = {
             "url": "http://x.com/a", "domain": "x.com", "ip": "1.1.1.1",
             "port": "80", "protocol": "http", "fragment": "",

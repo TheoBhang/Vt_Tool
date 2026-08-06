@@ -8,6 +8,20 @@ NOT_FOUND_ERROR = "Not found"
 NO_LINK = "No link"
 NO_HTTP_CERT = "No https certificate found"
 
+# (malicious_score, total_scans, tags) column positions in each table's
+# SELECT * row tuple. These differ per table (e.g. ips/domains have
+# port/protocol columns before the score columns that hashes doesn't),
+# so populate_scores()/populate_tags() must look them up per value_type
+# rather than assume one fixed layout.
+SCORE_TAG_COLUMNS = {
+    IPV4_PUBLIC_TYPE: (4, 5, 6),
+    "DOMAIN": (5, 6, 7),
+    "URL": (13, 14, 15),
+    "SHA-256": (2, 3, 4),
+    "SHA-1": (2, 3, 4),
+    "MD5": (2, 3, 4),
+}
+
 # Database schema for creating tables
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS urls (
@@ -216,8 +230,8 @@ class DBHandler:
                 excluded_keys = {"id", column}
                 filtered_values = [result_dict[key] for key in result_dict if key not in excluded_keys]
 
-                # Count occurrences of "Not Found"
-                not_found_count = sum(1 for value in filtered_values if value == "Not Found")
+                # Count occurrences of the not-found sentinel
+                not_found_count = sum(1 for value in filtered_values if value == NOT_FOUND_ERROR)
                 not_found_ratio = not_found_count / len(filtered_values) if filtered_values else 0
 
                 # Return None if the ratio of "Not Found" exceeds the threshold
@@ -282,9 +296,9 @@ class DBHandler:
                         "tags": NOT_FOUND_ERROR, "link": NO_LINK}
 
         if report != NOT_FOUND_ERROR and report:
-            self.populate_scores(value_object, report)
+            self.populate_scores(value_object, report, value_type)
             self.populate_link(value_object, value, value_type)
-            self.populate_tags(value_object, report[4])
+            self.populate_tags(value_object, report, value_type)
             if value_type == IPV4_PUBLIC_TYPE:
                 self.populate_ip_data(value, value_object, report)
             elif value_type == "DOMAIN":
@@ -296,10 +310,11 @@ class DBHandler:
 
         return value_object
 
-    def populate_scores(self, value_object, report):
+    def populate_scores(self, value_object, report, value_type):
         """Populate malicious score and total scans"""
-        value_object["malicious_score"] = report[2]
-        value_object["total_scans"] = report[3]
+        malicious_idx, total_idx, _ = SCORE_TAG_COLUMNS[value_type]
+        value_object["malicious_score"] = report[malicious_idx]
+        value_object["total_scans"] = report[total_idx]
 
     def populate_link(self, value_object, value, value_type):
         """Populate the link for the report"""
@@ -310,9 +325,10 @@ class DBHandler:
                 value = value[0]
             value_object["link"] = f"https://www.virustotal.com/gui/search/{value}"
 
-    def populate_tags(self, value_object, tags):
+    def populate_tags(self, value_object, report, value_type):
         """Populate tags for the report"""
-        value_object["tags"] = tags
+        _, _, tags_idx = SCORE_TAG_COLUMNS[value_type]
+        value_object["tags"] = report[tags_idx]
 
     def populate_ip_data(self, value, value_object, report):
         """Populate IP-related data"""
