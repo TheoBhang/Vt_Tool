@@ -660,12 +660,15 @@ def extract_table_data(results: List[Dict]) -> Tuple[List[str], List[List[str]]]
     """Extract headers and row values directly from JSON objects."""
 
     headers = set()
-    rows = []
-
     for result in results:
         if not isinstance(result, dict):
             continue
         headers.update(result["csv_report"][0].keys())
+
+    rows = []
+    for result in results:
+        if not isinstance(result, dict):
+            continue
         rows.append(
             [str(result["csv_report"][0].get(header, "")) for header in headers]
         )

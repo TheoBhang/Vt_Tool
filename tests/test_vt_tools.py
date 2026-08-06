@@ -24,18 +24,19 @@ class ExtractTableDataTests(unittest.TestCase):
         headers, rows = vt_tools.extract_table_data(results)
         self.assertEqual(set(headers), {"ip", "malicious_score", "extra"})
 
-    def test_row_length_matches_header_set_snapshot_at_that_point_not_final(self):
-        # Documents current behavior (see task header): row 1 is built before
-        # "extra" is added to `headers`, so it has 2 entries while row 2 (and
-        # the final `headers` list) has 3. This is why CustomPrettyTable has
-        # to silently drop rows whose length doesn't match the header count.
+    def test_rows_are_fully_populated_with_final_headers(self):
         results = [
             {"csv_report": [{"ip": "8.8.8.8", "malicious_score": 0}]},
             {"csv_report": [{"ip": "1.1.1.1", "malicious_score": 5, "extra": "x"}]},
         ]
-        _, rows = vt_tools.extract_table_data(results)
-        self.assertEqual(len(rows[0]), 2)
-        self.assertEqual(len(rows[1]), 3)
+        headers, rows = vt_tools.extract_table_data(results)
+        self.assertEqual(len(rows[0]), len(headers))
+        self.assertEqual(len(rows[1]), len(headers))
+        row0 = dict(zip(headers, rows[0]))
+        row1 = dict(zip(headers, rows[1]))
+        self.assertEqual(row0["ip"], "8.8.8.8")
+        self.assertEqual(row0["extra"], "")
+        self.assertEqual(row1["extra"], "x")
 
 
 class GetRemainingQuotaTests(unittest.TestCase):
