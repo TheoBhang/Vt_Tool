@@ -235,6 +235,7 @@ git rm LICENSE.md
 Write `LICENSE` with exactly this content (the standard, unmodified Apache License 2.0 text — do not add a filled-in copyright line; the license body itself has none, only the APPENDIX at the end carries the `[yyyy] [name of copyright owner]` placeholder template, which is for per-file headers/a NOTICE file, not this file):
 
 ```
+
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
