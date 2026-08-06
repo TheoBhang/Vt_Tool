@@ -1494,9 +1494,14 @@ git status --short
 
 Expected: only `tests/*.py` (and `.venv/` if untracked) show as changes — `vttools.sqlite` and `Results/` must not appear as modified/created (Task 5/7/9 isolate these with `:memory:` SQLite, `tempfile`, and mocked `DBHandler`/`vt.Client`).
 
-- [ ] **Step 3: Report the two documented bugs to the user**
+- [ ] **Step 3: Report the documented bugs to the user**
 
-No code change — just make sure the two findings from Task 7 and Task 11 (DBHandler cache-hit case-sensitivity bug; DBHandler malicious_score/total_scans/tags column misalignment for `ips`/`domains`; extract_table_data's per-result header snapshot) are called out clearly as candidates for the upcoming audit/fix pass, since that's the whole reason this suite was built first.
+No code change — just make sure the findings below are called out clearly as candidates for the upcoming audit/fix pass, since that's the whole reason this suite was built first:
+
+1. **DBHandler cache-hit case-sensitivity bug** (Task 7, `tests/test_db_handler.py`): `exists()` compares against `"Not Found"` but the app stores `"Not found"`, so the ratio-based cache-miss check never fires.
+2. **DBHandler malicious_score/total_scans/tags column misalignment** for `ips`/`domains` (Task 7, `tests/test_db_handler.py`): `populate_scores`/`populate_tags` use fixed tuple offsets correct only for the `hashes` table.
+3. **extract_table_data's per-result header snapshot** (Task 11, `tests/test_vt_tools.py`): `vt_tools.py` builds each row from a `headers` set mid-accumulation, not the final set, so rows can end up shorter than the final header list when results have heterogeneous keys.
+4. **`ValueReader._accumulate_values` is defined twice** (found during the final-review fix cycle, `tests/test_read_file.py`): `app/FileHandler/read_file.py`'s `ValueReader` class defines `_accumulate_values` once for the stdin path (~line 252) and again for the file path (~line 334) — Python keeps only the second definition, so `read_from_stdin()` silently writes into `self.dict_values_file` instead of `self.dict_values` and always returns an empty dict, even though it prints "Successfully read values from user input". **This means the CLI's stdin-piping input mode is completely broken today** — the most user-visible of the four findings, since it fails silently with no error.
 
 ---
 
