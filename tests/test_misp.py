@@ -109,6 +109,8 @@ class IdentifyObjectTypeTests(unittest.TestCase):
         self.assertEqual(identify_object_type("000001_URL_Analysis_x.csv"), "url")
         self.assertEqual(identify_object_type("000001_IP_Analysis_x.csv"), "ip-port")
         self.assertEqual(identify_object_type("000001_Domains_Analysis_x.csv"), "domain-ip")
+        # Test with lowercase to verify re.IGNORECASE is actually needed
+        self.assertEqual(identify_object_type("000001_hashes_analysis_x.csv"), "file")
 
     def test_unknown_filename_raises(self):
         with self.assertRaises(ValueError):
