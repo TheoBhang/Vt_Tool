@@ -8,6 +8,7 @@ vttools.sqlite
 __pycache__/
 .venv/
 *.tldextract.json.lock
+.worktrees/
 
 # Claude Code
 .claude/
