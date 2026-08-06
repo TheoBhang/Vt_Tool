@@ -1,5 +1,9 @@
 import unittest
+from unittest import mock
 
+import tldextract
+
+import app.DataHandler.validator as validator_mod
 from app.DataHandler.validator import (
     DataValidator,
     get_url_details,
@@ -7,6 +11,27 @@ from app.DataHandler.validator import (
     get_port_from_service_name,
     extract_ip_address,
 )
+
+
+def setUpModule():
+    # get_url_details() calls the module-level tldextract.extract(), which
+    # uses tldextract's global default instance and can hit the network on
+    # a cold cache. Patch just the `extract` attribute (not the whole
+    # module, which would also shadow tldextract.TLDExtract used by
+    # DataValidator.__init__) to a local, network-free instance so tests
+    # never perform real I/O regardless of cache state.
+    global _tldextract_patcher
+    offline_extract = tldextract.TLDExtract(
+        cache_dir=None, suffix_list_urls=(), fallback_to_snapshot=True
+    )
+    _tldextract_patcher = mock.patch.object(
+        validator_mod.tldextract, "extract", offline_extract
+    )
+    _tldextract_patcher.start()
+
+
+def tearDownModule():
+    _tldextract_patcher.stop()
 
 
 class ValidateIpTests(unittest.TestCase):

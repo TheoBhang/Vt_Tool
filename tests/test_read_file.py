@@ -1,3 +1,4 @@
+import io
 import os
 import sys
 import tempfile
@@ -53,7 +54,7 @@ class ValueExtractorTests(unittest.TestCase):
 
 
 class ValueReaderTests(unittest.TestCase):
-    def _reader_with_closed_stdin(self, fname=None, values=None):
+    def _reader(self, fname=None, values=None):
         reader = ValueReader(fname, values or [])
         return reader
 
@@ -62,7 +63,7 @@ class ValueReaderTests(unittest.TestCase):
             f.write("8.8.8.8\nexample.com\n44d88612fea8a8f36de82e1278abb02f\n")
             path = f.name
         try:
-            reader = self._reader_with_closed_stdin(fname=path)
+            reader = self._reader(fname=path)
             result = reader.read_from_file()
             self.assertIn("8.8.8.8", [ip for ip, _ in result["ips"]])
             self.assertIn("example.com", result["domains"])
@@ -73,17 +74,31 @@ class ValueReaderTests(unittest.TestCase):
             os.remove(path)
 
     def test_read_from_file_missing_file_returns_empty(self):
-        reader = self._reader_with_closed_stdin(fname="/nonexistent/file.txt")
+        reader = self._reader(fname="/nonexistent/file.txt")
         result = reader.read_from_file()
         self.assertEqual(result, {"ips": [], "urls": [], "hashes": [], "keys": [], "domains": []})
 
-    def test_read_from_stdin_returns_empty_when_not_a_tty_pipe_closed(self):
-        reader = self._reader_with_closed_stdin()
+    def test_read_from_stdin_returns_empty_when_stdin_is_a_tty(self):
+        reader = self._reader()
         with mock.patch.object(sys.stdin, "isatty", return_value=True):
             result = reader.read_from_stdin()
         self.assertEqual(result, {"ips": [], "urls": [], "hashes": [], "keys": [], "domains": []})
 
-    def test_read_values_combines_stdin_and_file_and_narrows_keys(self):
+    def test_read_from_stdin_parses_piped_lines(self):
+        reader = ValueReader(None, [])
+        piped_input = io.StringIO("8.8.8.8\nexample.com\n")
+        with mock.patch.object(sys, "stdin", piped_input):
+            with mock.patch.object(piped_input, "isatty", return_value=False):
+                result = reader.read_from_stdin()
+        # ValueReader defines _accumulate_values twice (once for stdin,
+        # once for file read); the second definition wins and both paths
+        # share it, so the parsed lines land in self.dict_values_file
+        # instead of self.dict_values / the returned dict. This documents
+        # current behavior, not a claim that it's correct.
+        self.assertEqual(result, {})
+        self.assertIn("example.com", reader.dict_values_file["domains"])
+
+    def test_read_values_narrows_keys_and_reads_file(self):
         with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
             f.write("example.com\n")
             path = f.name
