@@ -9,18 +9,20 @@
 
 ## Ponytail findings (ranked, biggest cut first)
 
-1. `delete:` **Entire unused Pydantic validation block** — `IPModel`, `DomainModel`, `HashModel`, `URLModel` (`app/DataHandler/validator.py:158-201`, ~44 lines) are never imported or instantiated anywhere outside this file; `validate_ip`/`validate_domain`/`validate_hash`/`validate_url` (the methods actually called by the rest of the app) duplicate the same checks without them. Deleting this block also frees `pydantic` as a dependency entirely.
-2. `delete:` **`self.hashid = HashID()`** (`validator.py:70`) is assigned in `__init__` and never read anywhere — `validate_hash` classifies by string length (32/40/64) and a regex, not via `hashid`. Only reference to `hashid` elsewhere is inside the dead `HashModel` from #1, which constructs its own separate instance anyway. Removing this (and #1) frees the `hashid` dependency too.
-3. `delete:` **Redundant ssdeep dead-end branch** — `validator.py`'s `validate_hash`: `if hash_str == self.empty_ssdeep: return None` is unreachable in effect (the function's final line is `return None` regardless), and `self.empty_ssdeep = "3::"` (`validator.py:74`) exists only to feed that branch. 3 dead lines.
-4. `delete:` **`populate_threat_classification`** (`app/VirusTotal/vt_reporter.py:317-325`) — defined, never called. The equivalent logic is already inlined directly in `populate_value_object` a few lines above it.
-5. `stdlib:` **Unreachable `except OSError` clauses** in `get_service_name`/`get_port_from_service_name` (`validator.py:14-30`) — `socket.error` has been an alias for `OSError` since Python 3.3, so `except (socket.error, ValueError): ... except OSError: ...` has a clause that can never fire. Collapse to one `except (OSError, ValueError): return None` per function.
-6. `shrink:` **`populate_link` is byte-for-byte duplicated** between `VTReporter` (`vt_reporter.py:203-210`) and `DBHandler` (`db_handler.py:319-326`) — identical 8-line method, two copies. Extract to one shared helper (e.g. a small `app/VirusTotal/link_builder.py` or a module-level function either class can call).
-7. `shrink:` **`misp_choice` and `misp_choice_template`** (`app/MISP/vt_tools2misp.py:510-591`) are structurally identical — same prompt text, same branching, same recursive retry-on-invalid-input — differing only in the `template_file`/`template` args passed to `misp_event`. Merge into one function with `template_file=None, template=None` defaults; removes ~35 duplicated lines.
-8. `shrink:` **Unsupported-value-type denylist duplicated verbatim** in `vt_tools.py` — the same 9-line list (`"Private IPv4"`, `"Loopback IPv4"`, …, `"SSDEEP"`) appears in both `get_existing_report` (line ~565) and `analyze_value` (line ~599). Extract to one module-level constant, e.g. `UNSUPPORTED_VALUE_TYPES = {...}`.
-9. `delete:` **Unused import** `from pytz import timezone as pytz_timezone` (`app/DataHandler/utils.py:6`) — never referenced again in the file. `utc2local` does its timezone conversion with stdlib `datetime.timezone` only.
-10. `native:` **`ipaddress` listed in `requirements.txt`** — it's been part of the Python standard library since 3.3. Nothing to install; remove the line.
+1. ~~`delete:` **Entire unused Pydantic validation block**~~ — **DONE** (`d165569`). `IPModel`, `DomainModel`, `HashModel`, `URLModel` (`app/DataHandler/validator.py:158-201`, ~44 lines) were never imported or instantiated anywhere outside this file; `validate_ip`/`validate_domain`/`validate_hash`/`validate_url` (the methods actually called by the rest of the app) duplicated the same checks without them. `pydantic` dropped from `requirements.txt` in `6de0f74`.
+2. ~~`delete:` **`self.hashid = HashID()`**~~ — **DONE** (`d165569`). Was assigned in `__init__` and never read — `validate_hash` classifies by string length (32/40/64) and a regex, not via `hashid`. `hashid` dropped from `requirements.txt` in `6de0f74`.
+3. ~~`delete:` **Redundant ssdeep dead-end branch**~~ — **DONE** (`d165569`). `if hash_str == self.empty_ssdeep: return None` was unreachable in effect (the function's final line was `return None` regardless); `self.empty_ssdeep = "3::"` removed too.
+4. ~~`delete:` **`populate_threat_classification`**~~ — **DONE** (`d165569`). Was defined, never called — the equivalent logic is already inlined directly in `populate_value_object`.
+5. ~~`stdlib:` **Unreachable `except OSError` clauses**~~ — **DONE** (`d165569`). Collapsed `get_service_name`/`get_port_from_service_name` to a single `except (socket.error, ValueError): return None` (`socket.error` has been an `OSError` alias since Python 3.3, so the separate `except OSError` clause could never fire).
+6. `shrink:` **`populate_link` is byte-for-byte duplicated** between `VTReporter` (`vt_reporter.py:203-210`) and `DBHandler` (`db_handler.py:319-326`) — identical 8-line method, two copies. Extract to one shared helper (e.g. a small `app/VirusTotal/link_builder.py` or a module-level function either class can call). *(Not yet done — next tier.)*
+7. `shrink:` **`misp_choice` and `misp_choice_template`** (`app/MISP/vt_tools2misp.py:510-591`) are structurally identical — same prompt text, same branching, same recursive retry-on-invalid-input — differing only in the `template_file`/`template` args passed to `misp_event`. Merge into one function with `template_file=None, template=None` defaults; removes ~35 duplicated lines. *(Not yet done — next tier.)*
+8. `shrink:` **Unsupported-value-type denylist duplicated verbatim** in `vt_tools.py` — the same 9-line list (`"Private IPv4"`, `"Loopback IPv4"`, …, `"SSDEEP"`) appears in both `get_existing_report` (line ~565) and `analyze_value` (line ~599). Extract to one module-level constant, e.g. `UNSUPPORTED_VALUE_TYPES = {...}`. *(Not yet done — next tier.)*
+9. ~~`delete:` **Unused import** `from pytz import timezone as pytz_timezone`~~ — **DONE** (`d165569`). Never referenced again in the file; `utc2local` does its timezone conversion with stdlib `datetime.timezone` only. `pytz` dropped from `requirements.txt` in `6de0f74`.
+10. ~~`native:` **`ipaddress` listed in `requirements.txt`**~~ — **DONE** (`6de0f74`). It's been part of the Python standard library since 3.3; the `import ipaddress` statement stays in `validator.py` (correct), only the pip entry was removed.
 
-**net: ~-120 lines, -2 deps possible from this list alone (`pydantic`, `hashid`) before touching requirements.txt separately below.**
+**Bonus finds during implementation (same class of finding, fixed alongside):** `import hashlib` in `validator.py` was also unused (never referenced) — removed in `d165569`.
+
+Applied: -69 lines (`d165569`), -8 requirements.txt entries (`6de0f74`). Verified with a completely fresh venv built from the trimmed `requirements.txt` (not just the existing dev venv) plus the full 113-test suite and a `vt_tools.py --help` smoke test — both clean.
 
 ---
 
@@ -41,7 +43,9 @@ Checked every one of the 15 listed packages against actual `import` usage repo-w
 
 Real, used dependencies: `prettytable`, `vt-py`, `python-dotenv`, `pymisp`, `rich`, `validators`, `tldextract`. That's 7, not 15.
 
-**This alone is worth doing regardless of anything else** — it shrinks the install footprint by more than half and removes real supply-chain surface area (8 packages you don't need are 8 packages that can carry a CVE or a broken release for zero benefit).
+**Status: DONE (`6de0f74`).** All 8 removed. `requirements.txt` now lists exactly the 7 real dependencies.
+
+One thing noticed during the fresh-venv verification, unrelated to this cleanup: `tldextract.extract(...).registered_domain` (used in `get_url_details`, `validator.py`) emits a `DeprecationWarning` on the installed `tldextract` 5.3.1 — it's being renamed to `top_domain_under_public_suffix` in a future major version. Not urgent (still works today), but a one-line rename to avoid a future breaking upgrade — flagging for the next pass rather than fixing here since it's a behavior-preserving API migration, not redundancy/dead code.
 
 ---
 
