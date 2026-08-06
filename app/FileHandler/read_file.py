@@ -1,10 +1,9 @@
 import os  # for interacting with the operating system
 import re  # for working with regular expressions
 import sys  # for interacting with the Python interpreter
-import csv
 from collections import defaultdict, Counter
 from dataclasses import dataclass
-from typing import Dict, List, Callable
+from typing import Dict, List
 from typing import Pattern as RePattern
 
 
@@ -311,7 +310,6 @@ class ValueReader:
             return self._get_empty_values()
 
         try:
-            csv_values = defaultdict(list)
             exit("CSV file reading not implemented yet")
 
         except (IOError, Exception) as e:

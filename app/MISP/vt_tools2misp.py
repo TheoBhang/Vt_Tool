@@ -221,7 +221,7 @@ def create_misp_object(row: Dict[str, str], object_name: str, attribute_mapping:
                     type=attr_type,
                     category=category,
                     to_ids=attribute_type in ["ip", "url", "sha256", "md5", "sha1", "ssdeep", "tlsh"],
-                    disable_correlation=not (attribute_type in ["ip", "url", "sha256", "md5", "sha1", "ssdeep", "tlsh"])
+                    disable_correlation=attribute_type not in ["ip", "url", "sha256", "md5", "sha1", "ssdeep", "tlsh"]
                 )
 
         return misp_object

@@ -1,4 +1,3 @@
-import os
 import ipaddress
 import re
 import validators
@@ -12,7 +11,7 @@ def get_service_name(port, protocol='tcp'):
         return socket.getservbyport(int(port), protocol)
     except (socket.error, ValueError):
         return None
-    except Exception as e:
+    except Exception:
         return None
 
 def get_port_from_service_name(service_name, protocol='tcp'):
@@ -20,7 +19,7 @@ def get_port_from_service_name(service_name, protocol='tcp'):
         return socket.getservbyname(service_name, protocol)
     except (socket.error, ValueError):
         return None
-    except Exception as e:
+    except Exception:
         return None
 
 def extract_ip_address(text):

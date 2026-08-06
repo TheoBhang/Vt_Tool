@@ -177,7 +177,7 @@ class DBHandler:
 
             conn.commit()
             cur.close()
-        except Exception as e:
+        except Exception:
             conn.rollback()
             cur.close()
 
@@ -423,7 +423,7 @@ class DBHandler:
         if report != NOT_FOUND_ERROR:
             try:
                 row_object.pop("info")
-            except Exception as e:
+            except Exception:
                 pass
             # Construct rows from the value object
             rows = [[key, value] for key, value in row_object.items()]

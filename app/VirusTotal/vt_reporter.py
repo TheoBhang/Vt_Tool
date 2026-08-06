@@ -166,7 +166,7 @@ class VTReporter:
                 else:
                     value_object["threat_category"] = NOT_FOUND_ERROR
                     value_object["threat_labels"] = NOT_FOUND_ERROR
-            except:
+            except Exception:
                 value_object["threat_category"] = NOT_FOUND_ERROR
                 value_object["threat_labels"] = NOT_FOUND_ERROR
 
