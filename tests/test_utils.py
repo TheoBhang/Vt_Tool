@@ -4,7 +4,25 @@ import unittest
 from datetime import datetime
 from unittest import mock
 
+from vt import url_id
+
 import app.DataHandler.utils as utils
+
+
+class BuildVirustotalLinkTests(unittest.TestCase):
+    def test_url_type_uses_url_id_encoding(self):
+        result = utils.build_virustotal_link("https://example.com/a", "URL")
+        self.assertEqual(
+            result, f"https://www.virustotal.com/gui/url/{url_id('https://example.com/a')}"
+        )
+
+    def test_non_url_type_uses_search_path(self):
+        result = utils.build_virustotal_link("8.8.8.8", "PUBLIC IPV4")
+        self.assertEqual(result, "https://www.virustotal.com/gui/search/8.8.8.8")
+
+    def test_non_url_type_unwraps_tuple_value(self):
+        result = utils.build_virustotal_link(("8.8.8.8", "443"), "PUBLIC IPV4")
+        self.assertEqual(result, "https://www.virustotal.com/gui/search/8.8.8.8")
 
 
 class Utc2LocalTests(unittest.TestCase):

@@ -4,11 +4,21 @@ from pathlib import Path
 from typing import List, Optional, Literal, Union
 from datetime import datetime, timezone  # for working with dates and times
 
+from vt import url_id
 from rich.console import Console
 from rich.prompt import Prompt, InvalidResponse
 from rich.table import Table
 
 console = Console()
+
+
+def build_virustotal_link(value, value_type: str) -> str:
+    """Build the VirusTotal GUI URL for a given value."""
+    if value_type == "URL":
+        return f"https://www.virustotal.com/gui/url/{url_id(value)}"
+    if isinstance(value, tuple):
+        value = value[0]
+    return f"https://www.virustotal.com/gui/search/{value}"
 
 ANALYSIS_OPTIONS = {
     "1": "IPs",

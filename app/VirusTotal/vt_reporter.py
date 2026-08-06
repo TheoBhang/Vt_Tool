@@ -1,6 +1,6 @@
 import logging
 from vt import url_id  # for interacting with URLs in VirusTotal
-from app.DataHandler.utils import utc2local  # for converting UTC time to local time
+from app.DataHandler.utils import utc2local, build_virustotal_link  # for converting UTC time to local time
 from app.DBHandler.db_handler import DBHandler
 from app.DataHandler.validator import get_service_name, get_url_details, extract_ip_address, get_port_from_service_name
 # Constants for handling various types and error messages
@@ -139,7 +139,7 @@ class VTReporter:
             malicious = report.last_analysis_stats.get("malicious", 0)
 
         self.populate_scores(value_object, total_scans, malicious)
-        self.populate_link(value_object, value, value_type)
+        value_object["link"] = build_virustotal_link(value, value_type)
         self.populate_tags(value_object, report)
 
         # Populate additional fields based on value type
@@ -199,15 +199,6 @@ class VTReporter:
         """Populates the 'malicious_score' and 'total_scans' fields."""
         value_object["malicious_score"] = malicious
         value_object["total_scans"] = total_scans
-
-    def populate_link(self, value_object, value, value_type):
-        """Populates the 'link' field based on the value type."""
-        if value_type == "URL":
-            value_object["link"] = f"https://www.virustotal.com/gui/url/{url_id(value)}"
-        else:
-            if isinstance(value, tuple):
-                value = value[0]
-            value_object["link"] = f"https://www.virustotal.com/gui/search/{value}"
 
     def populate_ip_data(self, value_object, value, report):
         """Populates the IP-specific fields."""

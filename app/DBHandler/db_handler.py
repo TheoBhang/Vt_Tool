@@ -1,6 +1,6 @@
 import sqlite3
 from sqlite3 import Error
-from vt import url_id  # For interacting with URLs in VirusTotal
+from app.DataHandler.utils import build_virustotal_link
 
 # Constants
 IPV4_PUBLIC_TYPE = "PUBLIC IPV4"
@@ -297,7 +297,7 @@ class DBHandler:
 
         if report != NOT_FOUND_ERROR and report:
             self.populate_scores(value_object, report, value_type)
-            self.populate_link(value_object, value, value_type)
+            value_object["link"] = build_virustotal_link(value, value_type)
             self.populate_tags(value_object, report, value_type)
             if value_type == IPV4_PUBLIC_TYPE:
                 self.populate_ip_data(value, value_object, report)
@@ -315,15 +315,6 @@ class DBHandler:
         malicious_idx, total_idx, _ = SCORE_TAG_COLUMNS[value_type]
         value_object["malicious_score"] = report[malicious_idx]
         value_object["total_scans"] = report[total_idx]
-
-    def populate_link(self, value_object, value, value_type):
-        """Populate the link for the report"""
-        if value_type == "URL":
-            value_object["link"] = f"https://www.virustotal.com/gui/url/{url_id(value)}"
-        else:
-            if isinstance(value, tuple):
-                value = value[0]
-            value_object["link"] = f"https://www.virustotal.com/gui/search/{value}"
 
     def populate_tags(self, value_object, report, value_type):
         """Populate tags for the report"""
