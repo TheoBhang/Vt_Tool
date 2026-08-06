@@ -19,7 +19,7 @@ from rich.table import Table
 from app.DataHandler.utils import get_api_key, get_proxy, get_user_choice
 from app.FileHandler.create_table import CustomPrettyTable as cpt
 from app.FileHandler.read_file import ValueReader
-from app.MISP.vt_tools2misp import misp_choice, misp_choice_template
+from app.MISP.vt_tools2misp import misp_choice
 from init import Initializator
 
 console = Console()
@@ -489,7 +489,7 @@ def analyze_values(args: argparse.Namespace, value_types: List[str]) -> None:
 
         # MISP-related action
         if args.template_file:
-            misp_choice_template(
+            misp_choice(
                 case_str=case_id,
                 csvfilescreated=csv_files_created,
                 template_file=args.template_file,

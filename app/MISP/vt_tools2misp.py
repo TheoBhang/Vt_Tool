@@ -507,13 +507,15 @@ def misp_event(case_str, csvfilescreated, template_file, template) -> None:
         console.print("[bold red]Exiting...[/bold red]")
 
 
-def misp_choice_template(case_str, csvfilescreated, template_file, template):
+def misp_choice(case_str: str, csvfilescreated: list, template_file: Optional[str] = None, template: Optional[str] = None) -> None:
     """
     Ask the user if they want to send the results to MISP and proceed accordingly.
 
     Parameters:
         case_str: Case identifier for the MISP event.
         csvfilescreated: List of CSV files to be processed and submitted.
+        template_file: Template file used in template mode, if any.
+        template: Template structure used in template mode, if any.
     """
     try:
         # Prompt the user for a decision
@@ -531,7 +533,7 @@ def misp_choice_template(case_str, csvfilescreated, template_file, template):
                 case_str = Prompt.ask("[bold]Please enter the MISP event ID[/bold]")
 
             # Proceed with MISP processing and submission
-            misp_event(case_str, csvfilescreated, template_file,template)
+            misp_event(case_str, csvfilescreated, template_file, template)
 
         # Handle user choice for No
         elif choice in ["2", "n", "no"]:
@@ -540,49 +542,7 @@ def misp_choice_template(case_str, csvfilescreated, template_file, template):
         # Invalid input handling
         else:
             console.print("[bold red]Invalid choice. Please enter a valid option.[/bold red]")
-            misp_choice_template(case_str, csvfilescreated, template_file, template)  # Recursively prompt until valid input
-
-    except KeyboardInterrupt:
-        console.print("[bold red]Exiting...[/bold red]")  # Graceful exit on keyboard interrupt
-    except Exception as e:
-        console.print(f"[bold red]An error occurred: {e}[/bold red]")  # Catch unexpected errors
-        console.print("[bold red]Exiting...[/bold red]")
-
-
-def misp_choice(case_str: str, csvfilescreated: list) -> None:
-    """
-    Ask the user if they want to send the results to MISP and proceed accordingly.
-
-    Parameters:
-        case_str: Case identifier for the MISP event.
-        csvfilescreated: List of CSV files to be processed and submitted.
-    """
-    try:
-        # Prompt the user for a decision
-        console.print("[bold]Do you want to send the results to MISP?[/bold]")
-        console.print("- Yes (1, Y, yes)")
-        console.print("- No (2, N, no)")
-
-        # Get the user's input
-        choice = Prompt.ask("[bold]Enter your choice[/bold]").strip().lower()
-
-        # Handle user choice for Yes
-        if choice in ["1", "y", "yes"]:
-            if case_str == "000000":
-                # If the case ID is '000000', ask for a valid MISP event ID
-                case_str = Prompt.ask("[bold]Please enter the MISP event ID[/bold]")
-
-            # Proceed with MISP processing and submission
-            misp_event(case_str, csvfilescreated, None, None)
-
-        # Handle user choice for No
-        elif choice in ["2", "n", "no"]:
-            console.print("[bold yellow]MISP event not created.[/bold yellow]")
-
-        # Invalid input handling
-        else:
-            console.print("[bold red]Invalid choice. Please enter a valid option.[/bold red]")
-            misp_choice(case_str, csvfilescreated)  # Recursively prompt until valid input
+            misp_choice(case_str, csvfilescreated, template_file, template)  # Recursively prompt until valid input
 
     except KeyboardInterrupt:
         console.print("[bold red]Exiting...[/bold red]")  # Graceful exit on keyboard interrupt

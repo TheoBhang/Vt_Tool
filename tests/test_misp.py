@@ -2,6 +2,7 @@ import csv
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 from app.MISP.vt_tools2misp import (
     process_csv_file,
@@ -10,6 +11,7 @@ from app.MISP.vt_tools2misp import (
     apply_template_data,
     create_misp_object,
     identify_object_type,
+    misp_choice,
 )
 
 
@@ -115,6 +117,42 @@ class IdentifyObjectTypeTests(unittest.TestCase):
     def test_unknown_filename_raises(self):
         with self.assertRaises(ValueError):
             identify_object_type("unrelated_file.csv")
+
+
+class MispChoiceTests(unittest.TestCase):
+    def test_yes_calls_misp_event_with_case_and_files(self):
+        with mock.patch("app.MISP.vt_tools2misp.misp_event") as mock_event:
+            with mock.patch("app.MISP.vt_tools2misp.Prompt.ask", return_value="y"):
+                misp_choice("123456", ["a.csv"])
+        mock_event.assert_called_once_with("123456", ["a.csv"], None, None)
+
+    def test_yes_passes_through_template_file_and_template(self):
+        with mock.patch("app.MISP.vt_tools2misp.misp_event") as mock_event:
+            with mock.patch("app.MISP.vt_tools2misp.Prompt.ask", return_value="1"):
+                misp_choice("123456", ["a.csv"], "template.csv", "value,comment")
+        mock_event.assert_called_once_with("123456", ["a.csv"], "template.csv", "value,comment")
+
+    def test_case_000000_prompts_for_event_id(self):
+        with mock.patch("app.MISP.vt_tools2misp.misp_event") as mock_event:
+            with mock.patch(
+                "app.MISP.vt_tools2misp.Prompt.ask", side_effect=["yes", "999999"]
+            ):
+                misp_choice("000000", ["a.csv"])
+        mock_event.assert_called_once_with("999999", ["a.csv"], None, None)
+
+    def test_no_choice_skips_misp_event(self):
+        with mock.patch("app.MISP.vt_tools2misp.misp_event") as mock_event:
+            with mock.patch("app.MISP.vt_tools2misp.Prompt.ask", return_value="no"):
+                misp_choice("123456", ["a.csv"])
+        mock_event.assert_not_called()
+
+    def test_invalid_choice_retries_until_valid(self):
+        with mock.patch("app.MISP.vt_tools2misp.misp_event") as mock_event:
+            with mock.patch(
+                "app.MISP.vt_tools2misp.Prompt.ask", side_effect=["bogus", "n"]
+            ):
+                misp_choice("123456", ["a.csv"])
+        mock_event.assert_not_called()
 
 
 if __name__ == "__main__":
