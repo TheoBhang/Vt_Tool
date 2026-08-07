@@ -2,7 +2,6 @@ import tempfile
 import unittest
 from unittest import mock
 
-import vt_tools
 from app.cache_backends.sqlite_backend import SQLiteCacheBackend
 from app.services.analysis_service import AnalysisService
 from app.services.cache_service import ReportCacheService
@@ -41,7 +40,15 @@ class AnalysisServiceIntegrationTests(unittest.TestCase):
         self.assertIn("ip", report)
         self.assertIn("creation_date", report)
 
-    def test_batch_with_not_found_and_found_both_produce_full_rows_for_csv(self):
+    def test_not_found_and_found_reports_share_the_same_key_set(self):
+        # extract_table_data() unions/pads headers across all results, so a
+        # length-vs-headers check here would pass even against the shape
+        # mismatch this test exists to catch (a not-found report with fewer
+        # keys than a found one). The real data-loss mechanism is downstream,
+        # in OutputHandler.output_to_csv, which derives CSV fieldnames from
+        # only the FIRST result's keys - a batch mixing a smaller not-found
+        # dict with a larger found dict silently drops rows there. Asserting
+        # the key sets are identical is what actually catches that mismatch.
         found_report = mock.Mock()
         found_report.last_analysis_stats = {"malicious": 1, "harmless": 50}
         found_report.tags = []
@@ -62,10 +69,7 @@ class AnalysisServiceIntegrationTests(unittest.TestCase):
         not_found_report, _ = self.service.analyze("doesnotexist12345.org", "domains")
         found_result, _ = self.service.analyze("example.com", "domains")
 
-        headers, rows = vt_tools.extract_table_data([not_found_report, found_result])
-
-        self.assertEqual(len(rows[0]), len(headers))
-        self.assertEqual(len(rows[1]), len(headers))
+        self.assertEqual(set(not_found_report), set(found_result))
 
 
 if __name__ == "__main__":
