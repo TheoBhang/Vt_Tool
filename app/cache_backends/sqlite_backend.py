@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from collections.abc import Mapping
 from datetime import datetime, timezone
 
 SCHEMA = """
@@ -44,7 +45,15 @@ class SQLiteCacheBackend:
                 report_json = excluded.report_json,
                 cached_at = excluded.cached_at
             """,
-            (value_type, value, json.dumps(report), cached_at),
+            (
+                value_type,
+                value,
+                json.dumps(
+                    report,
+                    default=lambda o: dict(o) if isinstance(o, Mapping) else str(o),
+                ),
+                cached_at,
+            ),
         )
         self._conn.commit()
 

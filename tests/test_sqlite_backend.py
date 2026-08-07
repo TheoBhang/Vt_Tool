@@ -3,6 +3,8 @@ import sqlite3
 import tempfile
 import unittest
 
+import vt
+
 from app.cache_backends.sqlite_backend import SQLiteCacheBackend
 
 
@@ -55,6 +57,37 @@ class SQLiteCacheBackendTests(unittest.TestCase):
         conn.close()
         self.assertIsNotNone(cached_at)
         self.assertNotEqual(cached_at, "")
+
+
+class SetWithRealVtObjectAttributesTests(unittest.TestCase):
+    """A real vt.Object's attributes include datetime (any *_date field) and
+    WhistleBlowerDict (any nested-dict field, a collections.UserDict, not a
+    dict subclass) - neither is JSON-serializable by default. Regression
+    test for the bug this caused: an uncaught TypeError on the first
+    cache write for any found domain/IP/URL value."""
+
+    def test_set_does_not_raise_on_datetime_and_whistleblower_dict_fields(self):
+        backend = SQLiteCacheBackend(":memory:")
+        vt_object = vt.Object.from_dict({
+            "type": "domain",
+            "id": "example.com",
+            "attributes": {
+                "creation_date": 1000000000,  # becomes a real datetime on read
+                "last_https_certificate": {"thumbprint": "abc123"},  # becomes a WhistleBlowerDict
+            },
+        })
+        report = {
+            "domain": "example.com",
+            "creation_date": vt_object.creation_date,
+            "https_certificate": vt_object.last_https_certificate,
+        }
+
+        backend.set("domains", "example.com", report)
+        result = backend.get("domains", "example.com")
+
+        self.assertEqual(result["domain"], "example.com")
+        self.assertIsInstance(result["creation_date"], str)
+        self.assertEqual(result["https_certificate"], {"thumbprint": "abc123"})
 
 
 if __name__ == "__main__":
