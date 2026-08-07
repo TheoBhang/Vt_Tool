@@ -17,18 +17,20 @@ class FakeReport:
 
 
 class CreateReportTests(unittest.TestCase):
-    def test_unknown_value_type_returns_default_object(self):
+    def test_unknown_value_type_raises(self):
         service = VirusTotalService(mock.Mock())
-        result = service.get_report("BOGUS", "x")
-        self.assertEqual(result["malicious_score"], "Not found")
+        with self.assertRaises(VirusTotalAPIError):
+            service.get_report("BOGUS", "x")
 
     def test_not_found_returns_default_object_no_exception(self):
         vt_client = mock.Mock()
         vt_client.get_object.side_effect = Exception("NotFoundError raised by vt-py")
         service = VirusTotalService(vt_client)
         result = service.get_report("DOMAIN", "nosuch.example")
-        self.assertEqual(result["malicious_score"], "Not found")
+        self.assertEqual(result["malicious_score"], 0)
         self.assertEqual(result["tags"], "Not found")
+        self.assertEqual(result["domain"], "nosuch.example")
+        self.assertEqual(result["total_scans"], 0)
 
     def test_other_errors_raise_virustotal_api_error(self):
         vt_client = mock.Mock()

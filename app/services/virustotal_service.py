@@ -28,8 +28,7 @@ class VirusTotalService:
     def get_report(self, value_type: str, value) -> dict:
         report = self._fetch(value_type, value)
         value_object = self._initialize(value_type)
-        if report is not None:
-            self._populate(value_object, value_type, value, report)
+        self._populate(value_object, value_type, value, report)
         return value_object
 
     def _fetch(self, value_type, value):
@@ -44,7 +43,7 @@ class VirusTotalService:
             "MD5": f"/files/{value}",
         }
         if value_type not in api_endpoints:
-            return None
+            raise VirusTotalAPIError(f"No VirusTotal endpoint for value type: {value_type}")
         try:
             return self.vt.get_object(api_endpoints[value_type])
         except Exception as e:
@@ -67,8 +66,12 @@ class VirusTotalService:
         return value_object
 
     def _populate(self, value_object, value_type, value, report):
-        total_scans = sum(report.last_analysis_stats.values())
-        malicious = report.last_analysis_stats.get("malicious", 0)
+        if report is None:
+            total_scans = 0
+            malicious = 0
+        else:
+            total_scans = sum(report.last_analysis_stats.values())
+            malicious = report.last_analysis_stats.get("malicious", 0)
         value_object["malicious_score"] = malicious
         value_object["total_scans"] = total_scans
         value_object["link"] = build_virustotal_link(value, value_type)
