@@ -535,6 +535,9 @@ def analyze_single_value(init: Initializator, value_type: str, value: str) -> tu
     except VirusTotalAPIError as e:
         console.print(f"[bold red]Error analyzing {value_type[:-1]}: {value}[/bold red] - {e}")
         return [], 0, 1
+    except Exception as e:
+        console.print(f"[bold red]Error analyzing {value_type[:-1]}: {value}[/bold red] - {e}")
+        return [], 0, 1
 
 
 def process_results(init: Initializator, results: List[Dict], value_type: str) -> None:

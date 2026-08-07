@@ -120,6 +120,14 @@ class AnalyzeSingleValueTests(unittest.TestCase):
         self.assertEqual(skipped, 0)
         self.assertEqual(errs, 1)
 
+    def test_unexpected_exception_counts_as_one_error_no_results(self):
+        init = mock.Mock()
+        init.analysis.analyze.side_effect = IndexError("list index out of range")
+        results, skipped, errs = vt_tools.analyze_single_value(init, "hashes", "deadbeef")
+        self.assertEqual(results, [])
+        self.assertEqual(skipped, 0)
+        self.assertEqual(errs, 1)
+
 
 if __name__ == "__main__":
     unittest.main()
