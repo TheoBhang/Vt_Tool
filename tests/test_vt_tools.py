@@ -2,24 +2,7 @@ import unittest
 from unittest import mock
 
 import vt_tools
-
-
-class UnsupportedValueTypesTests(unittest.TestCase):
-    def test_contains_exact_expected_set(self):
-        self.assertEqual(
-            vt_tools.UNSUPPORTED_VALUE_TYPES,
-            {
-                "Private IPv4",
-                "Loopback IPv4",
-                "Unspecified IPv4",
-                "Link-local IPv4",
-                "Reserved IPv4",
-                "SHA-224",
-                "SHA-384",
-                "SHA-512",
-                "SSDEEP",
-            },
-        )
+from app import errors as errors_module
 
 
 class CountIocsTests(unittest.TestCase):
@@ -36,16 +19,16 @@ class CountIocsTests(unittest.TestCase):
 class ExtractTableDataTests(unittest.TestCase):
     def test_headers_are_the_union_of_all_results(self):
         results = [
-            {"csv_report": [{"ip": "8.8.8.8", "malicious_score": 0}]},
-            {"csv_report": [{"ip": "1.1.1.1", "malicious_score": 5, "extra": "x"}]},
+            {"ip": "8.8.8.8", "malicious_score": 0},
+            {"ip": "1.1.1.1", "malicious_score": 5, "extra": "x"},
         ]
         headers, rows = vt_tools.extract_table_data(results)
         self.assertEqual(set(headers), {"ip", "malicious_score", "extra"})
 
     def test_rows_are_fully_populated_with_final_headers(self):
         results = [
-            {"csv_report": [{"ip": "8.8.8.8", "malicious_score": 0}]},
-            {"csv_report": [{"ip": "1.1.1.1", "malicious_score": 5, "extra": "x"}]},
+            {"ip": "8.8.8.8", "malicious_score": 0},
+            {"ip": "1.1.1.1", "malicious_score": 5, "extra": "x"},
         ]
         headers, rows = vt_tools.extract_table_data(results)
         self.assertEqual(len(rows[0]), len(headers))
@@ -104,43 +87,38 @@ class GetRemainingQuotaTests(unittest.TestCase):
             self.assertEqual(vt_tools.get_remaining_quota("key", None, None), 0)
 
 
-class ValueExistsTests(unittest.TestCase):
-    def test_hashes_uses_singular_hash_column(self):
+class AnalyzeSingleValueTests(unittest.TestCase):
+    def test_cache_hit_reports_one_skipped_value(self):
         init = mock.Mock()
-        vt_tools.value_exists(init, "somehash", "hashes", conn=None)
-        init.db_handler.exists.assert_called_once_with(None, "hashes", "somehash", "hash")
+        init.analysis.analyze.return_value = ({"malicious_score": 1}, True)
+        results, skipped, errors = vt_tools.analyze_single_value(init, "domains", "example.com")
+        self.assertEqual(results, [{"malicious_score": 1}])
+        self.assertEqual(skipped, 1)
+        self.assertEqual(errors, 0)
 
-    def test_ips_unwraps_tuple_and_uses_ip_column(self):
+    def test_cache_miss_reports_zero_skipped(self):
         init = mock.Mock()
-        vt_tools.value_exists(init, ("8.8.8.8", "443"), "ips", conn=None)
-        init.db_handler.exists.assert_called_once_with(None, "ips", "8.8.8.8", "ip")
+        init.analysis.analyze.return_value = ({"malicious_score": 9}, False)
+        results, skipped, errors = vt_tools.analyze_single_value(init, "domains", "example.com")
+        self.assertEqual(results, [{"malicious_score": 9}])
+        self.assertEqual(skipped, 0)
+        self.assertEqual(errors, 0)
 
-    def test_domains_uses_singular_domain_column(self):
+    def test_validation_error_counts_as_one_error_no_results(self):
         init = mock.Mock()
-        vt_tools.value_exists(init, "example.com", "domains", conn=None)
-        init.db_handler.exists.assert_called_once_with(None, "domains", "example.com", "domain")
+        init.analysis.analyze.side_effect = errors_module.ValidationError("invalid")
+        results, skipped, errs = vt_tools.analyze_single_value(init, "domains", "not-a-domain")
+        self.assertEqual(results, [])
+        self.assertEqual(skipped, 0)
+        self.assertEqual(errs, 1)
 
-
-class ValidateValueTests(unittest.TestCase):
-    def test_hashes_calls_validate_hash(self):
+    def test_virustotal_api_error_counts_as_one_error_no_results(self):
         init = mock.Mock()
-        init.validator.validate_hash.return_value = "MD5"
-        result = vt_tools.validate_value(init, "a" * 32, "hashes")
-        init.validator.validate_hash.assert_called_once_with("a" * 32)
-        self.assertEqual(result, "MD5")
-
-    def test_other_types_call_matching_validate_method(self):
-        init = mock.Mock()
-        init.validator.validate_domain.return_value = "DOMAIN"
-        result = vt_tools.validate_value(init, "example.com", "domains")
-        init.validator.validate_domain.assert_called_once_with("example.com")
-        self.assertEqual(result, "DOMAIN")
-
-    def test_missing_validator_method_returns_empty_string(self):
-        init = mock.Mock(spec=["validator"])
-        init.validator = mock.Mock(spec=[])  # no validate_domain attribute at all
-        result = vt_tools.validate_value(init, "example.com", "domains")
-        self.assertEqual(result, "")
+        init.analysis.analyze.side_effect = errors_module.VirusTotalAPIError("network down")
+        results, skipped, errs = vt_tools.analyze_single_value(init, "domains", "example.com")
+        self.assertEqual(results, [])
+        self.assertEqual(skipped, 0)
+        self.assertEqual(errs, 1)
 
 
 if __name__ == "__main__":
