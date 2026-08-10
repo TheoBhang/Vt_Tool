@@ -36,7 +36,13 @@ class InitializatorTests(unittest.TestCase):
         self.assertEqual(self.init.analysis.cache.backend.db_path, "vttools.sqlite")
 
     def test_analysis_service_cache_uses_the_default_ttl(self):
-        self.assertEqual(self.init.analysis.cache.ttl, timedelta(hours=24))
+        with mock.patch.dict(os.environ):
+            os.environ.pop("VT_CACHE_TTL_HOURS", None)
+            init = Initializator("fake-api-key", proxy=None, case_num="000001")
+            try:
+                self.assertEqual(init.analysis.cache.ttl, timedelta(hours=24))
+            finally:
+                init.client.close()
 
     def test_analysis_service_cache_ttl_is_configurable_via_env_var(self):
         with mock.patch.dict(os.environ, {"VT_CACHE_TTL_HOURS": "1"}):

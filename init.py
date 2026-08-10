@@ -11,7 +11,7 @@ from app.DataHandler.validator import DataValidator
 from app.FileHandler.output_to_file import OutputHandler
 from app.services.validation_service import ValidationService
 from app.services.virustotal_service import VirusTotalService
-from app.services.cache_service import ReportCacheService
+from app.services.cache_service import ReportCacheService, DEFAULT_TTL_HOURS
 from app.services.analysis_service import AnalysisService
 from app.services.misp_service import MispService
 from app.cache_backends.sqlite_backend import SQLiteCacheBackend
@@ -42,7 +42,7 @@ class Initializator:
 
         self.client = self._init_client()
         cache_backend = SQLiteCacheBackend(DATABASE_FILE)
-        cache_ttl = timedelta(hours=float(os.getenv("VT_CACHE_TTL_HOURS", "24")))
+        cache_ttl = timedelta(hours=float(os.getenv("VT_CACHE_TTL_HOURS", str(DEFAULT_TTL_HOURS))))
         self.analysis = AnalysisService(
             validation=ValidationService(DataValidator()),
             virustotal=VirusTotalService(self.client),
