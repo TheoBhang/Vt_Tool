@@ -1,3 +1,7 @@
+import os
+from datetime import timedelta
+from unittest import mock
+
 import unittest
 
 from init import Initializator
@@ -30,6 +34,17 @@ class InitializatorTests(unittest.TestCase):
 
     def test_analysis_service_cache_uses_the_configured_database_file(self):
         self.assertEqual(self.init.analysis.cache.backend.db_path, "vttools.sqlite")
+
+    def test_analysis_service_cache_uses_the_default_ttl(self):
+        self.assertEqual(self.init.analysis.cache.ttl, timedelta(hours=24))
+
+    def test_analysis_service_cache_ttl_is_configurable_via_env_var(self):
+        with mock.patch.dict(os.environ, {"VT_CACHE_TTL_HOURS": "1"}):
+            init = Initializator("fake-api-key", proxy=None, case_num="000001")
+            try:
+                self.assertEqual(init.analysis.cache.ttl, timedelta(hours=1))
+            finally:
+                init.client.close()
 
 
 if __name__ == "__main__":

@@ -1,3 +1,6 @@
+import os
+from datetime import timedelta
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -39,10 +42,11 @@ class Initializator:
 
         self.client = self._init_client()
         cache_backend = SQLiteCacheBackend(DATABASE_FILE)
+        cache_ttl = timedelta(hours=float(os.getenv("VT_CACHE_TTL_HOURS", "24")))
         self.analysis = AnalysisService(
             validation=ValidationService(DataValidator()),
             virustotal=VirusTotalService(self.client),
-            cache=ReportCacheService(cache_backend),
+            cache=ReportCacheService(cache_backend, ttl=cache_ttl),
         )
         self.misp = MispService()
         self.output = OutputHandler(self.case_num)
