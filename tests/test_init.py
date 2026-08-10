@@ -14,10 +14,14 @@ from app.cache_backends.sqlalchemy_backend import SQLAlchemyCacheBackend
 
 class InitializatorTests(unittest.TestCase):
     def setUp(self):
+        self._env_patcher = mock.patch.dict(os.environ)
+        self._env_patcher.start()
+        os.environ.pop("VT_CACHE_DB_URL", None)
         self.init = Initializator("fake-api-key", proxy=None, case_num="000001")
 
     def tearDown(self):
         self.init.client.close()
+        self._env_patcher.stop()
 
     def test_wires_up_all_components(self):
         self.assertTrue(self.init.client)

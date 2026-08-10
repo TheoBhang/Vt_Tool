@@ -19,10 +19,10 @@ class SQLAlchemyCacheBackend:
             "cached_reports",
             self.metadata,
             sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
-            sqlalchemy.Column("value_type", sqlalchemy.String, nullable=False),
-            sqlalchemy.Column("value", sqlalchemy.String, nullable=False),
+            sqlalchemy.Column("value_type", sqlalchemy.String(32), nullable=False),
+            sqlalchemy.Column("value", sqlalchemy.String(700), nullable=False),
             sqlalchemy.Column("report_json", sqlalchemy.Text, nullable=False),
-            sqlalchemy.Column("cached_at", sqlalchemy.String, nullable=False),
+            sqlalchemy.Column("cached_at", sqlalchemy.String(32), nullable=False),
             sqlalchemy.UniqueConstraint("value_type", "value", name="uq_value_type_value"),
         )
         self.metadata.create_all(self.engine)
