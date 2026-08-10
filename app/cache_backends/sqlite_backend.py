@@ -26,14 +26,15 @@ class SQLiteCacheBackend:
         self._conn.execute(SCHEMA)
         self._conn.commit()
 
-    def get(self, value_type: str, value: str) -> dict | None:
+    def get(self, value_type: str, value: str) -> tuple[dict, str] | None:
         row = self._conn.execute(
-            "SELECT report_json FROM cached_reports WHERE value_type = ? AND value = ?",
+            "SELECT report_json, cached_at FROM cached_reports WHERE value_type = ? AND value = ?",
             (value_type, value),
         ).fetchone()
         if row is None:
             return None
-        return json.loads(row[0])
+        report_json, cached_at = row
+        return json.loads(report_json), cached_at
 
     def set(self, value_type: str, value: str, report: dict) -> None:
         cached_at = datetime.now(timezone.utc).isoformat()

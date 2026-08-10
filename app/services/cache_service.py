@@ -1,22 +1,22 @@
-NOT_FOUND_ERROR = "Not found"
+from datetime import datetime, timedelta, timezone
 
 
 class ReportCacheService:
     """A pure cache in front of a CacheBackend: no report-shaping logic lives
-    here, only the policy of when a cached entry counts as a real hit."""
+    here, only the policy of when a cached entry counts as a real hit - a TTL
+    comparison against the backend's cached_at timestamp."""
 
-    def __init__(self, backend, threshold: float = 0.8):
+    def __init__(self, backend, ttl: timedelta = timedelta(hours=24)):
         self.backend = backend
-        self.threshold = threshold
+        self.ttl = ttl
 
     def get(self, value_type: str, value: str) -> dict | None:
-        report = self.backend.get(value_type, value)
-        if report is None:
+        result = self.backend.get(value_type, value)
+        if result is None:
             return None
-        if not report:
-            return None
-        not_found_count = sum(1 for v in report.values() if v == NOT_FOUND_ERROR)
-        if (not_found_count / len(report)) >= self.threshold:
+        report, cached_at = result
+        age = datetime.now(timezone.utc) - datetime.fromisoformat(cached_at)
+        if age > self.ttl:
             return None
         return report
 
