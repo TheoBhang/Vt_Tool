@@ -5,3 +5,4 @@ pymisp
 rich
 validators
 tldextract
+sqlalchemy
