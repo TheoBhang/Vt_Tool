@@ -8,6 +8,8 @@ from init import Initializator
 from app.services.analysis_service import AnalysisService
 from app.services.misp_service import MispService
 from app.FileHandler.output_to_file import OutputHandler
+from app.cache_backends.sqlite_backend import SQLiteCacheBackend
+from app.cache_backends.sqlalchemy_backend import SQLAlchemyCacheBackend
 
 
 class InitializatorTests(unittest.TestCase):
@@ -49,6 +51,23 @@ class InitializatorTests(unittest.TestCase):
             init = Initializator("fake-api-key", proxy=None, case_num="000001")
             try:
                 self.assertEqual(init.analysis.cache.ttl, timedelta(hours=1))
+            finally:
+                init.client.close()
+
+    def test_uses_sqlite_backend_when_db_url_is_unset(self):
+        with mock.patch.dict(os.environ):
+            os.environ.pop("VT_CACHE_DB_URL", None)
+            init = Initializator("fake-api-key", proxy=None, case_num="000001")
+            try:
+                self.assertIsInstance(init.analysis.cache.backend, SQLiteCacheBackend)
+            finally:
+                init.client.close()
+
+    def test_uses_sqlalchemy_backend_when_db_url_is_set(self):
+        with mock.patch.dict(os.environ, {"VT_CACHE_DB_URL": "sqlite:///:memory:"}):
+            init = Initializator("fake-api-key", proxy=None, case_num="000001")
+            try:
+                self.assertIsInstance(init.analysis.cache.backend, SQLAlchemyCacheBackend)
             finally:
                 init.client.close()
 

@@ -15,6 +15,7 @@ from app.services.cache_service import ReportCacheService, DEFAULT_TTL_HOURS
 from app.services.analysis_service import AnalysisService
 from app.services.misp_service import MispService
 from app.cache_backends.sqlite_backend import SQLiteCacheBackend
+from app.cache_backends.sqlalchemy_backend import SQLAlchemyCacheBackend
 
 console = Console()
 
@@ -41,7 +42,8 @@ class Initializator:
         self.case_num = case_num
 
         self.client = self._init_client()
-        cache_backend = SQLiteCacheBackend(DATABASE_FILE)
+        db_url = os.getenv("VT_CACHE_DB_URL")
+        cache_backend = SQLAlchemyCacheBackend(db_url) if db_url else SQLiteCacheBackend(DATABASE_FILE)
         cache_ttl = timedelta(hours=float(os.getenv("VT_CACHE_TTL_HOURS", str(DEFAULT_TTL_HOURS))))
         self.analysis = AnalysisService(
             validation=ValidationService(DataValidator()),
