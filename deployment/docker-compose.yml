@@ -1,59 +1,31 @@
 name: vt_tool
 services:
 
-  # vt-tool-web:
-  #   extends:
-  #     file: compose_apps.yaml
-  #     service: vt_tool_web
-  #   image: ${REGISTRY_MIRROR_URL:-}ghcr.io/thalesgroup-cert/vt-tool-web:${VT_TOOL_WEB_VERSION:-latest}
-  #   build:
-  #     context: ../
-  #     dockerfile: Dockerfile
-  #   container_name: vt-tool-web
-  #   restart: always
-  #   networks:
-  #     - vt_tool_network
-
-  misp-core:
+  vt-tool-api:
     extends:
       file: compose_apps.yaml
-      service: misp-core
-    image: ${REGISTRY_MIRROR_URL:-}ghcr.io/misp/misp-docker/misp-core:${MISP_VERSION:-latest}
-    container_name: misp
-    restart: always
+      service: vt-tool-api
+    image: ${REGISTRY_MIRROR_URL:-}ghcr.io/thalesgroup-cert/vt-tool-api:${VT_TOOL_API_VERSION:-latest}
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    container_name: vt-tool-api
     depends_on:
       redis:
         condition: service_healthy
-      db:
-        condition: service_healthy
-    healthcheck:
-      test: curl -ks https://localhost/users/heartbeat > /dev/null || exit 1
-      interval: 2s
-      timeout: 1s
-      retries: 10
-      start_period: 30s
-      start_interval: 30s
 
-  db:
-    extends:
-      file: compose_databases.yaml
-      service: db
-    image: mariadb:${DB_VERSION}
-    container_name: db
-    healthcheck:
-      test: mariadb-admin --user=${MYSQL_USER} --password=${MYSQL_PASSWORD} status
-      interval: 2s
-      timeout: 1s
-      retries: 10
-      start_period: 30s
-
-  mail:
+  vt-tool-worker:
     extends:
       file: compose_apps.yaml
-      service: mail
-    image: ${REGISTRY_MIRROR_URL:-}ghcr.io/egos-tech/smtp:1.1.3
-    container_name: mailer
-    restart: always
+      service: vt-tool-worker
+    image: ${REGISTRY_MIRROR_URL:-}ghcr.io/thalesgroup-cert/vt-tool-api:${VT_TOOL_API_VERSION:-latest}
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    container_name: vt-tool-worker
+    depends_on:
+      redis:
+        condition: service_healthy
 
   redis:
     extends:
@@ -69,38 +41,11 @@ services:
       retries: 10
       start_period: 30s
 
-  misp-modules:
-    extends:
-      file: compose_apps.yaml
-      service: misp-modules
-    image: ${REGISTRY_MIRROR_URL:-}ghcr.io/misp/misp-docker/misp-modules:${MISP_MODULES_VERSION:-latest}
-    container_name: misp-modules
-    restart: always
-    depends_on:
-      redis:
-        condition: service_healthy
-
-  misp-guard:
-    image: ${REGISTRY_MIRROR_URL:-}ghcr.io/misp/misp-docker/misp-guard:${MISP_GUARD_VERSION:-latest}
-    extends:
-      file: compose_apps.yaml
-      service: misp-guard
-    depends_on:
-      - misp-core
-    healthcheck:
-      test: "/bin/bash -c '</dev/tcp/localhost/${GUARD_PORT:-8888}'"
-      interval: 2m
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-
 networks:
   vt_tool_network:
     external: true
     name: ${NETWORK_NAME}
 
 volumes:
-  db_data:
-  db_log:
-  misp_guard_ca:
   cache_data:
+  vt_tool_cache:
