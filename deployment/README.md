@@ -92,6 +92,10 @@ make pull
 make create-certs
 ```
 
+## MISP Integration
+
+This stack does not run a local MISP instance. vt_tool's MISP-submission feature (`vt_tools.py`'s template-file workflow, implemented in `app/MISP/vt_tools2misp.py`) is configured independently of this deployment: set `MISPURL`, `MISPKEY`, and `MISPSSLVERIFY` in the repository's root-level `.env` file (see the root `.env.example`), pointed at whichever MISP instance you actually run. This deployment stack has no opinion about where that instance lives.
+
 ## Project Structure
 
 ```txt
