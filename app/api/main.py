@@ -1,6 +1,5 @@
 import os
 from contextlib import asynccontextmanager
-from datetime import timedelta
 from typing import Literal
 
 from arq import create_pool
@@ -10,31 +9,24 @@ from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 
 from app.DataHandler.validator import DataValidator
-from app.cache_backends.sqlalchemy_backend import SQLAlchemyCacheBackend
-from app.cache_backends.sqlite_backend import SQLiteCacheBackend
-from app.services.analysis_service import UNSUPPORTED_VALUE_TYPES
-from app.services.cache_service import DEFAULT_TTL_HOURS, ReportCacheService
+from app.errors import ValidationError
+from app.services.analysis_service import AnalysisService
+from app.services.cache_config import build_cache_service
 from app.services.validation_service import ValidationService
-
-DATABASE_FILE = "vttools.sqlite"
-
-
-def _build_cache() -> ReportCacheService:
-    db_url = os.getenv("VT_CACHE_DB_URL")
-    cache_backend = SQLAlchemyCacheBackend(db_url) if db_url else SQLiteCacheBackend(DATABASE_FILE)
-    cache_ttl = timedelta(hours=float(os.getenv("VT_CACHE_TTL_HOURS", str(DEFAULT_TTL_HOURS))))
-    return ReportCacheService(cache_backend, ttl=cache_ttl)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.validation = ValidationService(DataValidator())
-    app.state.cache = _build_cache()
+    app.state.analysis = AnalysisService(
+        validation=ValidationService(DataValidator()),
+        virustotal=None,
+        cache=build_cache_service(),
+    )
     app.state.redis = await create_pool(
         RedisSettings.from_dsn(os.getenv("REDIS_URL", "redis://localhost:6379"))
     )
     yield
-    app.state.cache.backend.close()
+    app.state.analysis.cache.backend.close()
     await app.state.redis.aclose()
 
 
@@ -54,23 +46,20 @@ class AnalyzeRequest(BaseModel):
 
 @app.post("/analyze")
 async def analyze(payload: AnalyzeRequest, request: Request):
-    validation: ValidationService = request.app.state.validation
-    cache: ReportCacheService = request.app.state.cache
+    analysis: AnalysisService = request.app.state.analysis
     redis = request.app.state.redis
 
     results = []
     for item in payload.values:
-        cached = cache.get(item.value_type, item.value)
+        cached = analysis.check_cache(item.value, item.value_type)
         if cached is not None:
             results.append({"status": "hit", "report": cached})
             continue
 
-        classification = validation.classify(item.value, item.value_type)
-        if not classification or classification in UNSUPPORTED_VALUE_TYPES:
-            results.append({
-                "status": "invalid",
-                "error": f"Unsupported or invalid {item.value_type[:-1]}: {item.value}",
-            })
+        try:
+            analysis.classify_or_raise(item.value, item.value_type)
+        except ValidationError as e:
+            results.append({"status": "invalid", "error": str(e)})
             continue
 
         job = await redis.enqueue_job(

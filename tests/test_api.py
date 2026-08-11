@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.DataHandler.validator import DataValidator
 from app.api.main import app
 from app.cache_backends.sqlite_backend import SQLiteCacheBackend
+from app.services.analysis_service import AnalysisService
 from app.services.cache_service import ReportCacheService
 from app.services.validation_service import ValidationService
 
@@ -22,8 +23,11 @@ class AnalyzeEndpointTests(unittest.TestCase):
         fd, self.db_path = tempfile.mkstemp(suffix=".sqlite")
         os.close(fd)
         os.remove(self.db_path)
-        app.state.validation = ValidationService(DataValidator())
-        app.state.cache = ReportCacheService(SQLiteCacheBackend(self.db_path))
+        app.state.analysis = AnalysisService(
+            validation=ValidationService(DataValidator()),
+            virustotal=None,
+            cache=ReportCacheService(SQLiteCacheBackend(self.db_path)),
+        )
         app.state.redis = mock.Mock()
         app.state.redis.enqueue_job = mock.AsyncMock(
             return_value=mock.Mock(job_id="test-job-id-123")
@@ -31,12 +35,12 @@ class AnalyzeEndpointTests(unittest.TestCase):
         self.client = TestClient(app)
 
     def tearDown(self):
-        app.state.cache.backend.close()
+        app.state.analysis.cache.backend.close()
         if os.path.exists(self.db_path):
             os.remove(self.db_path)
 
     def test_cache_hit_returns_report_synchronously_without_enqueueing(self):
-        app.state.cache.set("domains", "example.com", {"domain": "example.com", "malicious_score": 0})
+        app.state.analysis.cache.set("domains", "example.com", {"domain": "example.com", "malicious_score": 0})
 
         response = self.client.post("/analyze", json={
             "values": [{"value": "example.com", "value_type": "domains"}],
@@ -89,7 +93,7 @@ class AnalyzeEndpointTests(unittest.TestCase):
         )
 
     def test_batch_of_mixed_hit_miss_and_invalid_values(self):
-        app.state.cache.set("domains", "cached.example.com", {"domain": "cached.example.com"})
+        app.state.analysis.cache.set("domains", "cached.example.com", {"domain": "cached.example.com"})
 
         response = self.client.post("/analyze", json={
             "values": [

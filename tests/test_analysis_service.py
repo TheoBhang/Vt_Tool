@@ -88,5 +88,52 @@ class AnalysisServiceTests(unittest.TestCase):
         self.virustotal.get_report.assert_called_once_with("MD5", "a" * 32)
 
 
+class CheckCacheTests(unittest.TestCase):
+    """check_cache() is the API's sync-hit path - it has no VirusTotalService
+    (the API never fetches, only checks cache or enqueues a job), so this must
+    work standalone without touching self.virustotal."""
+
+    def setUp(self):
+        self.validation = mock.Mock()
+        self.cache = mock.Mock()
+        self.service = AnalysisService(self.validation, virustotal=None, cache=self.cache)
+
+    def test_returns_the_cached_report_on_a_hit(self):
+        self.cache.get.return_value = {"malicious_score": 5}
+        result = self.service.check_cache("example.com", "domains")
+        self.assertEqual(result, {"malicious_score": 5})
+        self.cache.get.assert_called_once_with("domains", "example.com")
+
+    def test_returns_none_on_a_miss(self):
+        self.cache.get.return_value = None
+        self.assertIsNone(self.service.check_cache("example.com", "domains"))
+
+    def test_ip_tuple_uses_plain_ip_string_as_the_cache_key(self):
+        self.cache.get.return_value = None
+        self.service.check_cache(("8.8.8.8", "443"), "ips")
+        self.cache.get.assert_called_once_with("ips", "8.8.8.8")
+
+
+class ClassifyOrRaiseTests(unittest.TestCase):
+    def setUp(self):
+        self.validation = mock.Mock()
+        self.cache = mock.Mock()
+        self.service = AnalysisService(self.validation, virustotal=None, cache=self.cache)
+
+    def test_returns_the_canonical_uppercase_type(self):
+        self.validation.classify.return_value = "DOMAIN"
+        self.assertEqual(self.service.classify_or_raise("example.com", "domains"), "DOMAIN")
+
+    def test_raises_validation_error_for_unsupported_classification(self):
+        self.validation.classify.return_value = "Private IPv4"
+        with self.assertRaises(ValidationError):
+            self.service.classify_or_raise(("192.168.1.1",), "ips")
+
+    def test_raises_validation_error_for_unclassifiable_value(self):
+        self.validation.classify.return_value = None
+        with self.assertRaises(ValidationError):
+            self.service.classify_or_raise("not a real domain", "domains")
+
+
 if __name__ == "__main__":
     unittest.main()

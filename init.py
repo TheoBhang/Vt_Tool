@@ -1,6 +1,3 @@
-import os
-from datetime import timedelta
-
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -11,15 +8,11 @@ from app.DataHandler.validator import DataValidator
 from app.FileHandler.output_to_file import OutputHandler
 from app.services.validation_service import ValidationService
 from app.services.virustotal_service import VirusTotalService
-from app.services.cache_service import ReportCacheService, DEFAULT_TTL_HOURS
+from app.services.cache_config import build_cache_service
 from app.services.analysis_service import AnalysisService
 from app.services.misp_service import MispService
-from app.cache_backends.sqlite_backend import SQLiteCacheBackend
-from app.cache_backends.sqlalchemy_backend import SQLAlchemyCacheBackend
 
 console = Console()
-
-DATABASE_FILE = "vttools.sqlite"
 
 
 class Initializator:
@@ -42,13 +35,10 @@ class Initializator:
         self.case_num = case_num
 
         self.client = self._init_client()
-        db_url = os.getenv("VT_CACHE_DB_URL")
-        cache_backend = SQLAlchemyCacheBackend(db_url) if db_url else SQLiteCacheBackend(DATABASE_FILE)
-        cache_ttl = timedelta(hours=float(os.getenv("VT_CACHE_TTL_HOURS", str(DEFAULT_TTL_HOURS))))
         self.analysis = AnalysisService(
             validation=ValidationService(DataValidator()),
             virustotal=VirusTotalService(self.client),
-            cache=ReportCacheService(cache_backend, ttl=cache_ttl),
+            cache=build_cache_service(),
         )
         self.misp = MispService()
         self.output = OutputHandler(self.case_num)
