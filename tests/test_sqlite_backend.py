@@ -2,6 +2,7 @@ import os
 import sqlite3
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 
 import vt
 
@@ -91,6 +92,39 @@ class SetWithRealVtObjectAttributesTests(unittest.TestCase):
         self.assertIsInstance(result["creation_date"], str)
         self.assertEqual(result["https_certificate"], {"thumbprint": "abc123"})
         self.assertIsInstance(cached_at, str)
+
+
+class ThreadSafetyTests(unittest.TestCase):
+    """SQLiteCacheBackend.get()/set() must be safe to call concurrently from
+    multiple threads - the worker (Task 2) runs each job's cache access inside
+    a thread pool executor, and arq runs multiple jobs concurrently within one
+    worker process by default."""
+
+    def setUp(self):
+        fd, self.db_path = tempfile.mkstemp(suffix=".sqlite")
+        os.close(fd)
+        os.remove(self.db_path)
+        self.backend = SQLiteCacheBackend(self.db_path)
+
+    def tearDown(self):
+        self.backend.close()
+        if os.path.exists(self.db_path):
+            os.remove(self.db_path)
+
+    def test_concurrent_set_and_get_from_multiple_threads_does_not_raise(self):
+        errors = []
+
+        def write_and_read(i):
+            try:
+                self.backend.set("domains", f"value{i % 5}.com", {"malicious_score": i})
+                self.backend.get("domains", f"value{i % 5}.com")
+            except Exception as e:
+                errors.append(e)
+
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            list(executor.map(write_and_read, range(50)))
+
+        self.assertEqual(errors, [])
 
 
 if __name__ == "__main__":
