@@ -33,6 +33,18 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
+@app.get("/health")
+async def health(request: Request):
+    analysis: AnalysisService = request.app.state.analysis
+    redis = request.app.state.redis
+    try:
+        analysis.check_cache("healthcheck", "domains")
+        await redis.ping()
+    except Exception:
+        raise HTTPException(status_code=503, detail="not ready")
+    return {"status": "ok"}
+
+
 class AnalyzeItem(BaseModel):
     value: str
     value_type: Literal["ips", "domains", "urls", "hashes"]

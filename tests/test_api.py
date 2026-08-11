@@ -108,6 +108,44 @@ class AnalyzeEndpointTests(unittest.TestCase):
         self.assertEqual([r["status"] for r in results], ["hit", "queued", "invalid"])
 
 
+class HealthEndpointTests(unittest.TestCase):
+    def setUp(self):
+        fd, self.db_path = tempfile.mkstemp(suffix=".sqlite")
+        os.close(fd)
+        os.remove(self.db_path)
+        app.state.analysis = AnalysisService(
+            validation=ValidationService(DataValidator()),
+            virustotal=None,
+            cache=ReportCacheService(SQLiteCacheBackend(self.db_path)),
+        )
+        app.state.redis = mock.Mock()
+        app.state.redis.ping = mock.AsyncMock(return_value=True)
+        self.client = TestClient(app)
+
+    def tearDown(self):
+        app.state.analysis.cache.backend.close()
+        if os.path.exists(self.db_path):
+            os.remove(self.db_path)
+
+    def test_returns_ok_when_cache_and_redis_are_reachable(self):
+        response = self.client.get("/health")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "ok"})
+
+    def test_returns_503_when_redis_ping_fails(self):
+        app.state.redis.ping = mock.AsyncMock(side_effect=Exception("connection refused"))
+        response = self.client.get("/health")
+        self.assertEqual(response.status_code, 503)
+
+    def test_returns_503_when_cache_backend_is_unreachable(self):
+        # A closed sqlite3 connection raises ProgrammingError on any further
+        # call - a real, verifiable "backend unreachable" condition, not a
+        # mocked stand-in for one.
+        app.state.analysis.cache.backend.close()
+        response = self.client.get("/health")
+        self.assertEqual(response.status_code, 503)
+
+
 class JobStatusEndpointTests(unittest.TestCase):
     def setUp(self):
         app.state.redis = mock.Mock()
