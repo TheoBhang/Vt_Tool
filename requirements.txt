@@ -6,3 +6,4 @@ rich
 validators
 tldextract
 sqlalchemy
+arq
