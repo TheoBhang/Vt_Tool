@@ -65,15 +65,17 @@ class DataValidator:
 
     ### === IP VALIDATION === ###
 
-    def validate_ip(self, ip: str) -> str | None:
+    def validate_ip(self, ip: str | tuple) -> str | None:
         """
         Validates an IP address and determines its type.
 
-        :param ip: The IP address to validate.
+        :param ip: The IP address to validate - either a plain string (as sent
+            by the API) or an (ip, port) tuple (as parsed by the CLI's ValueReader).
         :return: IP type (e.g., 'Public IPv4', 'Private IPv6') or None if invalid.
         """
         try:
-            ip_obj = ipaddress.ip_address(ip[0])
+            ip_str = ip[0] if isinstance(ip, tuple) else ip
+            ip_obj = ipaddress.ip_address(ip_str)
             ip_type = "IPv4" if ip_obj.version == 4 else "IPv6"
 
             if ip_obj.is_private:

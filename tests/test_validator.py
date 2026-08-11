@@ -59,6 +59,9 @@ class ValidateIpTests(unittest.TestCase):
     def test_invalid_ip_returns_none(self):
         self.assertIsNone(self.validator.validate_ip(("999.999.999.999",)))
 
+    def test_valid_public_ipv4_as_plain_string(self):
+        self.assertEqual(self.validator.validate_ip("8.8.8.8"), "Public IPv4")
+
 
 class ValidateDomainTests(unittest.TestCase):
     def setUp(self):

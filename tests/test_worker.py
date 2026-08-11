@@ -71,6 +71,28 @@ class AnalyzeValueJobTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(report["domain"], "doesnotexist12345.org")
 
+    async def test_analyze_value_handles_a_plain_string_ip(self):
+        # Regression test for the Critical bug found in final review: validate_ip()
+        # assumed a tuple, so every plain-string IP (what the API sends) was
+        # rejected as invalid before this fix.
+        found_report = mock.Mock()
+        found_report.last_analysis_stats = {"malicious": 0, "harmless": 60}
+        found_report.tags = []
+        found_report.as_owner = "Google LLC"
+        found_report.continent = "NA"
+        found_report.country = "US"
+        found_report.network = "8.8.8.0/24"
+        found_report.last_https_certificate = ""
+        found_report.regional_internet_registry = "ARIN"
+        found_report.asn = 15169
+
+        with mock.patch("vt.Client.get_object_async", new=mock.AsyncMock(return_value=found_report)):
+            report = await analyze_value(self.ctx, "8.8.8.8", "ips", "fake-api-key", None)
+
+        self.assertEqual(report["ip"], "8.8.8.8")
+        cached = self.cache.get("ips", "8.8.8.8")
+        self.assertIsNotNone(cached)
+
 
 class WorkerSettingsTests(unittest.IsolatedAsyncioTestCase):
     async def test_startup_populates_ctx_with_validation_and_cache(self):

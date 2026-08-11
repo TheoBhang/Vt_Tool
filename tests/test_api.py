@@ -75,6 +75,19 @@ class AnalyzeEndpointTests(unittest.TestCase):
         self.assertEqual(results[0]["status"], "invalid")
         app.state.redis.enqueue_job.assert_not_called()
 
+    def test_ip_value_is_valid_and_gets_queued_on_a_cache_miss(self):
+        response = self.client.post("/analyze", json={
+            "values": [{"value": "8.8.8.8", "value_type": "ips"}],
+            "api_key": "fake-api-key",
+        })
+
+        self.assertEqual(response.status_code, 200)
+        results = response.json()
+        self.assertEqual(results[0]["status"], "queued")
+        app.state.redis.enqueue_job.assert_called_once_with(
+            "analyze_value", "8.8.8.8", "ips", "fake-api-key", None
+        )
+
     def test_batch_of_mixed_hit_miss_and_invalid_values(self):
         app.state.cache.set("domains", "cached.example.com", {"domain": "cached.example.com"})
 
