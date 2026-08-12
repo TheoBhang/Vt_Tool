@@ -202,9 +202,10 @@ class JobStatusEndpointTests(unittest.TestCase):
 
 class CorsTests(unittest.TestCase):
     def test_allows_configured_origin(self):
+        import importlib
+        import app.api.main as main_module
+
         with mock.patch.dict(os.environ, {"CORS_ALLOWED_ORIGINS": "http://localhost:5173"}):
-            import importlib
-            import app.api.main as main_module
             importlib.reload(main_module)
             client = TestClient(main_module.app)
             response = client.options(
@@ -217,7 +218,13 @@ class CorsTests(unittest.TestCase):
             self.assertEqual(
                 response.headers.get("access-control-allow-origin"), "http://localhost:5173"
             )
-            importlib.reload(main_module)
+        # Reload AFTER the env var patch is reverted, so app.api.main is left
+        # in its default state (CORS_ALLOWED_ORIGINS unset -> "*") for any
+        # later code that accesses app.api.main.app directly rather than via
+        # a frozen `from app.api.main import app` reference taken at this
+        # file's own import time (which the other test classes already use,
+        # and which this reload doesn't affect either way).
+        importlib.reload(main_module)
 
 
 if __name__ == "__main__":
