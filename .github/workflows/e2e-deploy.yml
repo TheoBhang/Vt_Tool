@@ -6,6 +6,7 @@ name: e2e-deploy
 
 on:
   pull_request:
+    branches: [master]
   push:
     branches: [master]
   workflow_dispatch:
@@ -23,7 +24,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v4
       - name: Bootstrap + smoke
         run: ./deployment/scripts/ci-smoke.sh
       - name: Upload stack logs

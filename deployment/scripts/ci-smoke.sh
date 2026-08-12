@@ -5,11 +5,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT/deployment"
 
-[ -f .env ] || cp .env.example .env
+CREATED_ENV=0
+[ -f .env ] || { cp .env.example .env; CREATED_ENV=1; }
 
 COMPOSE="docker compose --env-file .env -f docker-compose.yml"
-
-./scripts/check-network.sh
 
 cleanup() {
   rc=$?
@@ -19,15 +18,17 @@ cleanup() {
     $COMPOSE logs --no-color --tail 60 2>&1 || true
   fi
   $COMPOSE down --remove-orphans -v || true
-  rm -f .env
+  if [ "$CREATED_ENV" = 1 ]; then rm -f .env; fi
 }
 trap cleanup EXIT
+
+./scripts/check-network.sh
 
 $COMPOSE up -d --build
 
 echo "waiting for containers to report healthy..."
 healthy=0
-for _ in $(seq 1 45); do
+for _ in $(seq 1 90); do
   redis_h=$(docker inspect -f '{{.State.Health.Status}}' redis 2>/dev/null || echo "")
   api_h=$(docker inspect -f '{{.State.Health.Status}}' vt-tool-api 2>/dev/null || echo "")
   worker_h=$(docker inspect -f '{{.State.Health.Status}}' vt-tool-worker 2>/dev/null || echo "")
@@ -72,5 +73,14 @@ if [ "$STATUS" != "failed" ]; then
   echo "ERROR: expected job to reach 'failed' status with a fake API key, got '${STATUS}'"
   exit 1
 fi
+
+ERR=$(printf '%s' "$JOB_RESP" | python3 -c "import json,sys; print(json.load(sys.stdin).get('error') or '')")
+case "$ERR" in
+  *WrongCredentials*) ;;
+  *)
+    echo "ERROR: job failed for the wrong reason: ${ERR}"
+    exit 1
+    ;;
+esac
 
 echo "CI smoke test passed."

@@ -60,8 +60,10 @@ reimplementing them:
   captures `docker compose logs` to `deployment/ci-stack.log`, prints the
   tail of logs to stdout if the run failed (visible directly in the Actions
   log, not just the uploaded artifact), tears the stack down
-  (`down --remove-orphans`), removes the network, removes the generated
-  `.env`.
+  (`down --remove-orphans`), removes the generated `.env`. The network is
+  intentionally NOT removed: it uses a fixed persistent name and
+  `external: true` in `docker-compose.yml`, matching the `make up`/`make
+  down` convention.
 - `set -euo pipefail`; any step failing (including the health-wait loop
   timing out, or the job not reaching `"failed"`) is a hard CI failure.
 
