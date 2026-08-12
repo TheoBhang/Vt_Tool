@@ -200,5 +200,25 @@ class JobStatusEndpointTests(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
 
 
+class CorsTests(unittest.TestCase):
+    def test_allows_configured_origin(self):
+        with mock.patch.dict(os.environ, {"CORS_ALLOWED_ORIGINS": "http://localhost:5173"}):
+            import importlib
+            import app.api.main as main_module
+            importlib.reload(main_module)
+            client = TestClient(main_module.app)
+            response = client.options(
+                "/analyze",
+                headers={
+                    "Origin": "http://localhost:5173",
+                    "Access-Control-Request-Method": "POST",
+                },
+            )
+            self.assertEqual(
+                response.headers.get("access-control-allow-origin"), "http://localhost:5173"
+            )
+            importlib.reload(main_module)
+
+
 if __name__ == "__main__":
     unittest.main()
