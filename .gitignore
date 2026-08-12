@@ -5,6 +5,7 @@
 .dockerignore
 .env
 vttools.sqlite
+deployment/ci-stack.log
 __pycache__/
 .venv/
 *.tldextract.json.lock
