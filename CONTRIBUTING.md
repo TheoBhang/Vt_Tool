@@ -47,9 +47,9 @@ The `commit-msg` hook rejects any subject that does not match
 `style`, `revert`. Merge / revert / fixup / squash auto-subjects are
 allowed through.
 
-> **Note:** the `deployment/` directory is for *running* the deployed tool
-> (vt_tool + MISP + guard, via Docker Compose) - it's not a development
-> environment. For day-to-day development, use the `venv` setup above.
+> **Note:** the `deployment/` directory is for *running* vt_tool's API +
+> worker services via Docker Compose - it's not a development environment.
+> For day-to-day development, use the `venv` setup above.
 
 ---
 
