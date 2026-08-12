@@ -33,7 +33,7 @@ A new `.github/workflows/e2e-deploy.yml`, separate from the existing
 `ci.yml` (which stays untouched — lint + `unittest`, fast feedback). The new
 workflow:
 
-1. Checks out the repo, sets up `docker/setup-buildx-action`.
+1. Checks out the repo.
 2. Runs a new `deployment/scripts/ci-smoke.sh` — the bootstrap/smoke script.
 3. On failure, uploads the stack's captured Docker Compose logs as a build
    artifact (`docker-stack-log`).
@@ -71,7 +71,7 @@ reimplementing them:
 
 ```
 e2e-deploy.yml
-  └─ checkout, setup-buildx-action
+  └─ checkout
   └─ run deployment/scripts/ci-smoke.sh
        ├─ cp .env.example .env (if missing)
        ├─ ./check-network.sh
@@ -90,7 +90,8 @@ e2e-deploy.yml
   retries, or the job not reaching `"failed"` within its own bounded poll —
   each is an explicit non-zero exit with a descriptive message, not a
   silent pass-through.
-- The `trap` guarantees teardown (containers, network, generated `.env`)
+- The `trap` guarantees teardown (containers, generated `.env` — but not
+  the network, which is intentionally left in place, see Architecture)
   runs even on a mid-script failure, so a failed CI run doesn't leave
   dangling state on the runner (irrelevant for ephemeral GitHub-hosted
   runners, but keeps the script equally safe to run locally).
@@ -106,8 +107,9 @@ verification runs already did) before merging.
 
 ## Triggers
 
-`pull_request` (any branch, matching `ci.yml`'s existing convention) + `push`
-to `master` + `workflow_dispatch`. No path filtering — runs on every PR/push,
+`pull_request` (filtered to `branches: [master]`, matching `ci.yml`'s
+existing convention exactly) + `push` to `master` + `workflow_dispatch`. No
+path filtering — runs on every PR/push,
 same as `ci.yml`, since a regression in the containerized path can originate
 from a change anywhere in `app/` (e.g. `app/services/`), not just
 `deployment/`. `timeout-minutes: 10` (suspicious uses 40 for its much
