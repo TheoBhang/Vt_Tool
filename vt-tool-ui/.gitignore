@@ -5,3 +5,4 @@ dist-ssr/
 .pnpm-store/
 playwright-report/
 test-results/
+*.tsbuildinfo
