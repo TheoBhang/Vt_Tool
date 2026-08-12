@@ -4,6 +4,7 @@ from rich.text import Text
 from rich.table import Table
 
 from app.VirusTotal.vt_client import VirusTotalClient
+from app.DataHandler.utils import get_ssl_verify
 from app.DataHandler.validator import DataValidator
 from app.FileHandler.output_to_file import OutputHandler
 from app.services.validation_service import ValidationService
@@ -33,6 +34,7 @@ class Initializator:
         self.api_key = api_key
         self.proxy = proxy
         self.case_num = case_num
+        self.ssl_verify = get_ssl_verify()
 
         self.client = self._init_client()
         self.analysis = AnalysisService(
@@ -47,7 +49,7 @@ class Initializator:
 
     def _init_client(self):
         """Initializes the VirusTotal client."""
-        return VirusTotalClient(self.api_key, self.proxy).init_client()
+        return VirusTotalClient(self.api_key, self.proxy, self.ssl_verify).init_client()
 
     def _display_info(self, client, analysis, misp, output):
         """Displays information about the initialized components with a clear UI."""

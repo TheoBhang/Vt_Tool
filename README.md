@@ -102,6 +102,10 @@ export VTAPIKEY="your_api_key"
 --proxy http://127.0.0.1:8080
 ```
 
+### 3️⃣ TLS verification (optional)
+
+`VTSSLVERIFY` (env var only, no CLI flag) — defaults to `true`. Set to `false` to skip TLS certificate verification on VirusTotal API traffic, for use behind a proxy that does TLS inspection. Only disable this on a proxy you trust — it removes protection against man-in-the-middle attacks otherwise.
+
 ## Usage
 
 ```bash
@@ -310,6 +314,7 @@ Execution ends with:
 * Proxy support for controlled outbound traffic
 * Local DB prevents unnecessary API calls
 * Invalid or sensitive IP ranges are filtered
+* TLS verification on VirusTotal traffic is on by default; `VTSSLVERIFY=false` should only be used behind a trusted TLS-inspecting proxy
 
 ## Running as a Service
 

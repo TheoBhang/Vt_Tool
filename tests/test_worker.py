@@ -96,6 +96,18 @@ class AnalyzeValueJobTests(unittest.IsolatedAsyncioTestCase):
         cached = self.cache.get("ips", "8.8.8.8")
         self.assertIsNotNone(cached)
 
+    async def test_reads_verify_ssl_from_env_var_per_job(self):
+        with mock.patch.dict(os.environ, {"VTSSLVERIFY": "false"}), mock.patch(
+            "app.worker.tasks.VirusTotalClient"
+        ) as mock_client_cls:
+            mock_client_cls.return_value.init_client.return_value.close = mock.Mock()
+            with mock.patch(
+                "app.worker.tasks.AnalysisService.analyze", return_value=({"domain": "example.com"}, "hit")
+            ):
+                await analyze_value(self.ctx, "example.com", "domains", "fake-api-key", None)
+
+        mock_client_cls.assert_called_once_with("fake-api-key", None, False)
+
 
 class WorkerSettingsTests(unittest.IsolatedAsyncioTestCase):
     async def test_startup_populates_ctx_with_validation_and_cache(self):

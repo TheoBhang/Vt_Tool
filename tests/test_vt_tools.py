@@ -61,7 +61,7 @@ class GetRemainingQuotaTests(unittest.TestCase):
             def __init__(self):
                 self.proxies = {}
 
-            def get(self, url, headers=None):
+            def get(self, url, headers=None, verify=None):
                 return FakeResponse()
 
         with mock.patch("vt_tools.requests.Session", return_value=FakeSession()):
@@ -80,11 +80,73 @@ class GetRemainingQuotaTests(unittest.TestCase):
             def __init__(self):
                 self.proxies = {}
 
-            def get(self, url, headers=None):
+            def get(self, url, headers=None, verify=None):
                 raise requests.exceptions.RequestException("network down")
 
         with mock.patch("vt_tools.requests.Session", return_value=FailingSession()):
             self.assertEqual(vt_tools.get_remaining_quota("key", None, None), 0)
+
+    def test_defaults_to_verifying_ssl(self):
+        seen = {}
+
+        class RecordingSession:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc_info):
+                return False
+
+            def __init__(self):
+                self.proxies = {}
+
+            def get(self, url, headers=None, verify=None):
+                seen["verify"] = verify
+
+                class Resp:
+                    status_code = 200
+
+                    def raise_for_status(self):
+                        pass
+
+                    def json(self):
+                        return {"data": {"api_requests_hourly": {"user": {"allowed": 1, "used": 0}}}}
+
+                return Resp()
+
+        with mock.patch("vt_tools.requests.Session", return_value=RecordingSession()):
+            vt_tools.get_remaining_quota("key", None, None)
+        self.assertTrue(seen["verify"])
+
+    def test_passes_verify_ssl_false_through_to_the_request(self):
+        seen = {}
+
+        class RecordingSession:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc_info):
+                return False
+
+            def __init__(self):
+                self.proxies = {}
+
+            def get(self, url, headers=None, verify=None):
+                seen["verify"] = verify
+
+                class Resp:
+                    status_code = 200
+
+                    def raise_for_status(self):
+                        pass
+
+                    def json(self):
+                        return {"data": {"api_requests_hourly": {"user": {"allowed": 1, "used": 0}}}}
+
+                return Resp()
+
+        with mock.patch("vt_tools.requests.Session", return_value=RecordingSession()):
+            vt_tools.get_remaining_quota("key", None, None, verify_ssl=False)
+        self.assertFalse(seen["verify"])
 
 
 class AnalyzeSingleValueTests(unittest.TestCase):

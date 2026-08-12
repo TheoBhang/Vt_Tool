@@ -58,6 +58,23 @@ class InitializatorTests(unittest.TestCase):
             finally:
                 init.client.close()
 
+    def test_ssl_verify_defaults_to_true(self):
+        with mock.patch.dict(os.environ):
+            os.environ.pop("VTSSLVERIFY", None)
+            init = Initializator("fake-api-key", proxy=None, case_num="000001")
+            try:
+                self.assertTrue(init.ssl_verify)
+            finally:
+                init.client.close()
+
+    def test_ssl_verify_is_configurable_via_env_var(self):
+        with mock.patch.dict(os.environ, {"VTSSLVERIFY": "false"}):
+            init = Initializator("fake-api-key", proxy=None, case_num="000001")
+            try:
+                self.assertFalse(init.ssl_verify)
+            finally:
+                init.client.close()
+
     def test_uses_sqlite_backend_when_db_url_is_unset(self):
         with mock.patch.dict(os.environ):
             os.environ.pop("VT_CACHE_DB_URL", None)

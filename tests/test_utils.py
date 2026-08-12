@@ -81,6 +81,28 @@ class GetProxyTests(unittest.TestCase):
             self.assertIsNone(utils.get_proxy())
 
 
+class GetSslVerifyTests(unittest.TestCase):
+    def test_defaults_to_true_when_unset(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertTrue(utils.get_ssl_verify())
+
+    def test_reads_false_from_env_var(self):
+        with mock.patch.dict(os.environ, {"VTSSLVERIFY": "false"}, clear=True):
+            self.assertFalse(utils.get_ssl_verify())
+
+    def test_reads_true_from_env_var(self):
+        with mock.patch.dict(os.environ, {"VTSSLVERIFY": "true"}, clear=True):
+            self.assertTrue(utils.get_ssl_verify())
+
+    def test_is_case_insensitive(self):
+        with mock.patch.dict(os.environ, {"VTSSLVERIFY": "FALSE"}, clear=True):
+            self.assertFalse(utils.get_ssl_verify())
+
+    def test_unrecognized_value_is_treated_as_false(self):
+        with mock.patch.dict(os.environ, {"VTSSLVERIFY": "nope"}, clear=True):
+            self.assertFalse(utils.get_ssl_verify())
+
+
 class InteractivePromptTests(unittest.TestCase):
     def test_display_menu_returns_choice(self):
         with mock.patch("app.DataHandler.utils.Prompt.ask", return_value="2"):

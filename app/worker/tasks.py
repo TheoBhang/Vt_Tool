@@ -1,5 +1,6 @@
 import asyncio
 
+from app.DataHandler.utils import get_ssl_verify
 from app.VirusTotal.vt_client import VirusTotalClient
 from app.services.analysis_service import AnalysisService
 from app.services.virustotal_service import VirusTotalService
@@ -24,7 +25,7 @@ async def analyze_value(ctx, value, value_type: str, api_key: str, proxy: str | 
     """
 
     def _run_analysis() -> dict:
-        client = VirusTotalClient(api_key, proxy).init_client()
+        client = VirusTotalClient(api_key, proxy, get_ssl_verify()).init_client()
         try:
             analysis = AnalysisService(
                 validation=ctx["validation"],

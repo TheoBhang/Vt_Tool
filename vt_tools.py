@@ -257,7 +257,9 @@ def parse_arguments() -> argparse.Namespace:
     return args
 
 
-def get_remaining_quota(api_key: str, proxy: str = None, args: argparse.Namespace = None) -> int:
+def get_remaining_quota(
+    api_key: str, proxy: str = None, args: argparse.Namespace = None, verify_ssl: bool = True
+) -> int:
     """Returns the number of hashes that could be queried within this run."""
 
     url = f"https://www.virustotal.com/api/v3/users/{api_key}/overall_quotas"
@@ -269,7 +271,7 @@ def get_remaining_quota(api_key: str, proxy: str = None, args: argparse.Namespac
             session.proxies.update({"http": proxy, "https": proxy})
 
         try:
-            response = session.get(url, headers=headers)
+            response = session.get(url, headers=headers, verify=verify_ssl)
             response.raise_for_status()  # Will raise an exception for HTTP error codes
         except RequestException as e:
             logging.error(f"Error retrieving VT Quota: {e}")
@@ -347,7 +349,7 @@ def analyze_values(args: argparse.Namespace, value_types: List[str]) -> None:
     else:
         logging.info("Checking for remaining queries...")
 
-    remaining_queries = get_remaining_quota(init.api_key, init.proxy, args)
+    remaining_queries = get_remaining_quota(init.api_key, init.proxy, args, init.ssl_verify)
     if remaining_queries == 0:
         if not args.non_interactive:
             console.print(
@@ -445,7 +447,7 @@ def analyze_values(args: argparse.Namespace, value_types: List[str]) -> None:
 
     # Post-analysis report
     csv_files_created = list(set(init.output.csvfilescreated))
-    quota_final = get_remaining_quota(init.api_key, init.proxy, args)
+    quota_final = get_remaining_quota(init.api_key, init.proxy, args, init.ssl_verify)
     if not args.non_interactive:
         if quota_saved == 0:
             console.print(

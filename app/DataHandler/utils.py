@@ -110,6 +110,22 @@ def get_proxy(proxy: Optional[str] = None, env_var: str = "PROXY") -> str:
     logger.error("No proxy provided. Please specify a proxy or set the environment variable.")
 
 
+def get_ssl_verify(env_var: str = "VTSSLVERIFY") -> bool:
+    """
+    Retrieve whether to verify VirusTotal's TLS certificate from an environment
+    variable. Defaults to True (verify) when unset - only disable this behind
+    a trusted proxy doing TLS inspection.
+
+    Parameters:
+    - env_var (str): Environment variable name to read (default: "VTSSLVERIFY").
+
+    Returns:
+    - bool: True to verify the TLS certificate, False to skip verification.
+    """
+
+    return os.getenv(env_var, "true").strip().lower() in ("1", "true", "yes", "on")
+
+
 def display_menu() -> str:
     """
     Display the analysis type menu and get user selection.
