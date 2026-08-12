@@ -7,7 +7,7 @@ It relies on:
 * **Environment configuration via `.env`**
 * **Self-contained helper scripts** (`scripts/`)
 * **Optional Makefile shortcuts** for convenience
-* A comprehensive **checklist** that prepares all required files, directories, and certificates
+* A comprehensive **checklist** that verifies required binaries and prepares your `.env` file
 
 ## Requirements
 
@@ -30,11 +30,8 @@ make init
 
 This performs:
 
-* Creation of the `.env` file (or uses yours if present)
-* Directory structure validation
-* Download/creation of config files
-* Certificate generation (if missing)
-  …and other required system checks.
+* Verification of required binaries (`docker`, `docker compose`, `curl`)
+* Creation of the `.env` file from `.env.example` (or uses yours if present)
 
 This step ensures the project is ready to run.
 
@@ -69,8 +66,7 @@ make deploy
 This command runs:
 
 * Network checks
-* TLS/hostname replacement
-* Deployment script execution
+* Image pull (build-only for `vt-tool-api`/`vt-tool-worker`, real pull for `redis`), rebuild, and a clean restart
 
 ## 🛠 Development & Maintenance Commands
 
@@ -91,6 +87,8 @@ make pull
 ```bash
 make create-certs
 ```
+
+Not used by any service in this stack today — kept for a future reverse-proxy/TLS setup.
 
 ## MISP Integration
 

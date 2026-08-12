@@ -9,6 +9,7 @@ services:
     build:
       context: ../
       dockerfile: Dockerfile
+    pull_policy: build
     container_name: vt-tool-api
     depends_on:
       redis:
@@ -22,6 +23,7 @@ services:
     build:
       context: ../
       dockerfile: Dockerfile
+    pull_policy: build
     container_name: vt-tool-worker
     depends_on:
       redis:

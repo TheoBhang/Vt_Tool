@@ -1,5 +1,5 @@
 # --- Makefile ---
-include .env
+-include .env
 
 .PHONY: help up down build pull deploy create-certs init
 
