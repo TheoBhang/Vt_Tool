@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from datetime import timedelta
 from unittest import mock
 
 from app.DataHandler.validator import DataValidator
@@ -25,7 +26,9 @@ class AnalyzeValueJobTests(unittest.IsolatedAsyncioTestCase):
         fd, self.db_path = tempfile.mkstemp(suffix=".sqlite")
         os.close(fd)
         os.remove(self.db_path)
-        self.cache = ReportCacheService(SQLiteCacheBackend(self.db_path))
+        # explicit TTL: these tests write then immediately read back from the
+        # cache, which the DEFAULT_TTL_HOURS=0 default would never let hit.
+        self.cache = ReportCacheService(SQLiteCacheBackend(self.db_path), ttl=timedelta(hours=24))
         self.ctx = {
             "validation": ValidationService(DataValidator()),
             "cache": self.cache,

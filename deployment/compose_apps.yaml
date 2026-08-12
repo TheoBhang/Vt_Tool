@@ -10,7 +10,7 @@ services:
     environment:
       REDIS_URL: "redis://:${REDIS_PASSWORD:-redispassword}@redis:${REDIS_PORT:-6379}/${VT_TOOL_REDIS_DB:-1}"
       VT_CACHE_DB_URL: "${VT_CACHE_DB_URL:-sqlite:////app/data/vttools.sqlite}"
-      VT_CACHE_TTL_HOURS: "${VT_CACHE_TTL_HOURS:-24}"
+      VT_CACHE_TTL_HOURS: "${VT_CACHE_TTL_HOURS:-0}"
     volumes:
       - vt_tool_cache:/app/data
     healthcheck:
@@ -31,7 +31,7 @@ services:
     environment:
       REDIS_URL: "redis://:${REDIS_PASSWORD:-redispassword}@redis:${REDIS_PORT:-6379}/${VT_TOOL_REDIS_DB:-1}"
       VT_CACHE_DB_URL: "${VT_CACHE_DB_URL:-sqlite:////app/data/vttools.sqlite}"
-      VT_CACHE_TTL_HOURS: "${VT_CACHE_TTL_HOURS:-24}"
+      VT_CACHE_TTL_HOURS: "${VT_CACHE_TTL_HOURS:-0}"
     volumes:
       - vt_tool_cache:/app/data
     healthcheck:

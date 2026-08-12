@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from datetime import timedelta
 from unittest import mock
 
 from fastapi.testclient import TestClient
@@ -26,7 +27,9 @@ class AnalyzeEndpointTests(unittest.TestCase):
         app.state.analysis = AnalysisService(
             validation=ValidationService(DataValidator()),
             virustotal=None,
-            cache=ReportCacheService(SQLiteCacheBackend(self.db_path)),
+            # explicit TTL: these tests seed the cache then expect a hit,
+            # which the DEFAULT_TTL_HOURS=0 default would never give them.
+            cache=ReportCacheService(SQLiteCacheBackend(self.db_path), ttl=timedelta(hours=24)),
         )
         app.state.redis = mock.Mock()
         app.state.redis.enqueue_job = mock.AsyncMock(

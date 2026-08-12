@@ -42,12 +42,9 @@ class ReportCacheServiceTests(unittest.TestCase):
         service = ReportCacheService(backend, ttl=timedelta(hours=24))
         self.assertEqual(service.get("DOMAIN", "example.com"), not_found_report)
 
-    def test_default_ttl_is_24_hours(self):
-        backend = mock.Mock()
-        report = {"a": 1}
-        backend.get.return_value = (report, iso_at(timedelta(hours=-23)))
-        service = ReportCacheService(backend)
-        self.assertEqual(service.get("DOMAIN", "example.com"), report)
+    def test_default_ttl_is_zero_hours(self):
+        service = ReportCacheService(mock.Mock())
+        self.assertEqual(service.ttl, timedelta(hours=0))
 
     def test_set_delegates_to_backend(self):
         backend = mock.Mock()

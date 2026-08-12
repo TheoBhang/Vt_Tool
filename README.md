@@ -215,7 +215,7 @@ Before analysis begins:
 
 Two environment variables (see `.env.example`) control caching, with sensible defaults if unset:
 
-* `VT_CACHE_TTL_HOURS` — how long a cached result stays valid before it's treated as stale and re-queried.
+* `VT_CACHE_TTL_HOURS` — how long a cached result stays valid before it's treated as stale and re-queried. Default `0`: every value is re-queried on each run regardless of what's already cached. Set a positive value (e.g. `24`) to actually reuse cached results across runs and save API quota.
 * `VT_CACHE_DB_URL` — the cache backend. Defaults to the local `vttools.sqlite` file; can point to any SQLAlchemy-supported database (e.g. Postgres, MySQL) for shared/multi-instance caching.
 
 ## Output

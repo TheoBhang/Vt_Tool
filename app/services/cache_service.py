@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 from app.cache_backends import CacheBackend
 
-DEFAULT_TTL_HOURS = 24
+DEFAULT_TTL_HOURS = 0
 
 
 class ReportCacheService:
@@ -11,6 +11,8 @@ class ReportCacheService:
     comparison against the backend's cached_at timestamp."""
 
     def __init__(self, backend: CacheBackend, ttl: timedelta = timedelta(hours=DEFAULT_TTL_HOURS)):
+        # ponytail: DEFAULT_TTL_HOURS=0 means caching is effectively a no-op by
+        # default (every read is stale) - set VT_CACHE_TTL_HOURS to enable it.
         self.backend = backend
         self.ttl = ttl
 

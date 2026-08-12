@@ -46,7 +46,7 @@ class InitializatorTests(unittest.TestCase):
             os.environ.pop("VT_CACHE_TTL_HOURS", None)
             init = Initializator("fake-api-key", proxy=None, case_num="000001")
             try:
-                self.assertEqual(init.analysis.cache.ttl, timedelta(hours=24))
+                self.assertEqual(init.analysis.cache.ttl, timedelta(hours=0))
             finally:
                 init.client.close()
 

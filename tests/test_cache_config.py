@@ -34,10 +34,10 @@ class BuildCacheServiceTests(unittest.TestCase):
         finally:
             service.backend.close()
 
-    def test_default_ttl_is_24_hours(self):
+    def test_default_ttl_is_zero_hours(self):
         service = build_cache_service()
         try:
-            self.assertEqual(service.ttl, timedelta(hours=24))
+            self.assertEqual(service.ttl, timedelta(hours=0))
         finally:
             service.backend.close()
 
