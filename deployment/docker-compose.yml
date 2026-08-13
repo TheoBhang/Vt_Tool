@@ -29,6 +29,20 @@ services:
       redis:
         condition: service_healthy
 
+  vt-tool-ui:
+    extends:
+      file: compose_apps.yaml
+      service: vt-tool-ui
+    image: ${REGISTRY_MIRROR_URL:-}ghcr.io/thalesgroup-cert/vt-tool-ui:${VT_TOOL_UI_VERSION:-latest}
+    build:
+      context: ../vt-tool-ui
+      dockerfile: Dockerfile
+    pull_policy: build
+    container_name: vt-tool-ui
+    depends_on:
+      vt-tool-api:
+        condition: service_healthy
+
   redis:
     extends:
       file: compose_databases.yaml
