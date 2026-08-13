@@ -90,6 +90,17 @@ make create-certs
 
 Not used by any service in this stack today — kept for a future reverse-proxy/TLS setup.
 
+## Services
+
+* **`vt-tool-api`** / **`vt-tool-worker`** — the FastAPI service and arq
+  background worker (`POST /analyze`, `GET /jobs/{id}`, `GET /health`).
+* **`vt-tool-ui`** — the React frontend (`vt-tool-ui/`), served by nginx.
+  Depends on `vt-tool-api` being healthy before it starts. Exposed on
+  `VT_TOOL_UI_PORT` (default `5173`; see `.env.example`). See
+  [`vt-tool-ui/README.md`](../vt-tool-ui/README.md) for frontend-specific
+  dev/build/test docs.
+* **`redis`** — the arq job queue backing `vt-tool-api`/`vt-tool-worker`.
+
 ## MISP Integration
 
 This stack does not run a local MISP instance. vt_tool's MISP-submission feature (`vt_tools.py`'s template-file workflow, implemented in `app/MISP/vt_tools2misp.py`) is configured independently of this deployment: set `MISPURL`, `MISPKEY`, and `MISPSSLVERIFY` in the repository's root-level `.env` file (see the root `.env.example`), pointed at whichever MISP instance you actually run. This deployment stack has no opinion about where that instance lives.

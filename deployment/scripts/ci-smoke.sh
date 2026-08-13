@@ -24,7 +24,9 @@ trap cleanup EXIT
 
 ./scripts/check-network.sh
 
-$COMPOSE up -d --build
+# Scoped to the backend services only - this is a backend smoke test, and an
+# unrelated vt-tool-ui build failure shouldn't fail it.
+$COMPOSE up -d --build redis vt-tool-api vt-tool-worker
 
 echo "waiting for containers to report healthy..."
 healthy=0

@@ -19,6 +19,10 @@ describe("computeVerdict", () => {
     expect(computeVerdict({ malicious_score: "Not found", total_scans: "Not found" })).toBe("unknown");
   });
 
+  it("is unknown when total_scans is 0 even though malicious_score is 0", () => {
+    expect(computeVerdict({ malicious_score: 0, total_scans: 0 })).toBe("unknown");
+  });
+
   it("is unknown when the report is null or undefined", () => {
     expect(computeVerdict(null)).toBe("unknown");
     expect(computeVerdict(undefined)).toBe("unknown");

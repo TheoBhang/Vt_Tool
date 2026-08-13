@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Stack, Typography } from "@mui/material";
+import { Alert, Button, Stack, Typography } from "@mui/material";
 import IocInput from "../features/analyze/components/IocInput";
 import IocReviewTable from "../features/analyze/components/IocReviewTable";
 import KpiCards from "../features/analyze/components/KpiCards";
@@ -18,7 +18,7 @@ interface ResolvedRow {
 export default function AnalyzePage() {
   const [reviewItems, setReviewItems] = useState<ClassifiedIoc[] | null>(null);
   const [submittedItems, setSubmittedItems] = useState<ClassifiedIoc[] | null>(null);
-  const { mutate, data: results } = useAnalyze();
+  const { mutate, data: results, isError, error, reset } = useAnalyze();
 
   // Job ids for whichever results came back "queued" - this array's length
   // changes between renders (0 before submit, N after), which is exactly why
@@ -39,11 +39,13 @@ export default function AnalyzePage() {
       return { value: item.value, report: null, error: result.error };
     }
     const jobIndex = queuedJobIds.indexOf(result.job_id);
-    const jobData = jobQueries[jobIndex]?.data;
+    const jobQuery = jobQueries[jobIndex];
+    const jobData = jobQuery?.data;
+    const jobError = jobQuery?.error;
     return {
       value: item.value,
       report: jobData?.report ?? null,
-      error: jobData?.error ?? undefined,
+      error: jobData?.error ?? (jobError instanceof Error ? jobError.message : undefined),
     };
   });
 
@@ -57,18 +59,37 @@ export default function AnalyzePage() {
     mutate(items.map((item) => ({ value: item.value, value_type: item.type as "ips" | "domains" | "urls" | "hashes" })));
   };
 
+  const handleReset = () => {
+    setReviewItems(null);
+    setSubmittedItems(null);
+    reset();
+  };
+
   return (
     <Stack spacing={3}>
       <Typography variant="h4">Analyze</Typography>
       {!reviewItems && <IocInput onParsed={setReviewItems} />}
-      {reviewItems && !submittedItems && (
-        <IocReviewTable items={reviewItems} onChange={setReviewItems} onSubmit={handleSubmit} />
-      )}
-      {submittedItems && (
+      {reviewItems && (
         <>
-          <KpiCards reports={rows.map((row) => row.report)} />
-          <ResultsTable rows={rows} />
-          {!allResolved && <Typography>Waiting for results…</Typography>}
+          {results === undefined ? (
+            <>
+              {isError && (
+                <Alert severity="error">
+                  {error instanceof Error ? error.message : "Failed to submit analysis. Please try again."}
+                </Alert>
+              )}
+              <IocReviewTable items={reviewItems} onChange={setReviewItems} onSubmit={handleSubmit} />
+            </>
+          ) : (
+            <>
+              <KpiCards reports={rows.map((row) => row.report)} />
+              <ResultsTable rows={rows} />
+              {!allResolved && <Typography>Waiting for results…</Typography>}
+            </>
+          )}
+          <Button variant="outlined" onClick={handleReset} sx={{ alignSelf: "flex-start" }}>
+            New analysis
+          </Button>
         </>
       )}
     </Stack>

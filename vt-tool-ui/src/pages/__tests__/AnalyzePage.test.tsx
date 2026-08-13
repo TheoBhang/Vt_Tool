@@ -34,4 +34,44 @@ describe("AnalyzePage", () => {
 
     await waitFor(() => expect(screen.getByText("CLEAN")).toBeInTheDocument());
   });
+
+  it("shows an error banner and preserves the reviewed batch when submit fails", async () => {
+    vi.spyOn(endpoints, "analyze").mockRejectedValue(new Error("Network Error"));
+
+    renderPage();
+
+    await userEvent.type(screen.getByRole("textbox", { name: /paste iocs/i }), "example.com");
+    await userEvent.click(screen.getByRole("button", { name: /review/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^analyze$/i }));
+
+    await waitFor(() => expect(screen.getByText("Network Error")).toBeInTheDocument());
+    // The reviewed item is still on screen - nothing was destroyed, and the
+    // user can retry without re-pasting.
+    expect(screen.getByText("example.com")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^analyze$/i })).toBeInTheDocument();
+  });
+
+  it("resolves a mixed queued/invalid response once polling completes", async () => {
+    vi.spyOn(endpoints, "analyze").mockResolvedValue([
+      { status: "queued", job_id: "job-1" },
+      { status: "invalid", error: "bad value" },
+    ]);
+    vi.spyOn(endpoints, "getJob").mockResolvedValue({
+      status: "complete",
+      report: { malicious_score: 0, total_scans: 90 },
+      error: null,
+    });
+
+    renderPage();
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /paste iocs/i }),
+      "example.com{enter}test.org",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /review/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^analyze$/i }));
+
+    await waitFor(() => expect(screen.getByText("CLEAN")).toBeInTheDocument());
+    expect(screen.getByText("bad value")).toBeInTheDocument();
+  });
 });

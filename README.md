@@ -322,8 +322,9 @@ vt_tool can also run as a long-running HTTP service instead of a one-shot CLI in
 
 * **API** (`app/api/main.py`, FastAPI) — `POST /analyze` queues a lookup, `GET /jobs/{job_id}` polls its status, `GET /health` reports readiness.
 * **Worker** (`app/worker/`, [arq](https://arq-docs.helpmanual.io/)) — picks jobs off a Redis queue and performs the VirusTotal lookup, sharing the same cache and analysis logic as the CLI.
+* **Frontend** (`vt-tool-ui/`, React) — a web UI that submits IOCs to the API and polls for results; see [`vt-tool-ui/README.md`](vt-tool-ui/README.md).
 
-For a Docker Compose deployment of the API + worker + Redis, see [`deployment/README.md`](deployment/README.md).
+For a Docker Compose deployment of the API + worker + UI + Redis, see [`deployment/README.md`](deployment/README.md).
 
 ## Development
 
