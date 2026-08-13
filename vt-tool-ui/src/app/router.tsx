@@ -1,12 +1,32 @@
-import { Route, Routes } from "react-router-dom";
+import { Link as RouterLink, Route, Routes } from "react-router-dom";
+import { AppBar, Box, Link, Toolbar, Typography } from "@mui/material";
 import AnalyzePage from "../pages/AnalyzePage";
 import SettingsPage from "../pages/SettingsPage";
+import ApiHealthIndicator from "../shared/components/ApiHealthIndicator";
 
 export function AppRouter() {
   return (
-    <Routes>
-      <Route path="/" element={<AnalyzePage />} />
-      <Route path="/settings" element={<SettingsPage />} />
-    </Routes>
+    <>
+      <AppBar position="static">
+        <Toolbar sx={{ gap: 2 }}>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            vt_tool
+          </Typography>
+          <Link component={RouterLink} to="/" color="inherit">
+            Analyze
+          </Link>
+          <Link component={RouterLink} to="/settings" color="inherit">
+            Settings
+          </Link>
+          <ApiHealthIndicator />
+        </Toolbar>
+      </AppBar>
+      <Box sx={{ p: 3 }}>
+        <Routes>
+          <Route path="/" element={<AnalyzePage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Routes>
+      </Box>
+    </>
   );
 }
