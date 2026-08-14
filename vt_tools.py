@@ -281,16 +281,26 @@ def get_remaining_quota(
 
         # Parse the response if successful
         if response.status_code == 200:
-            json_response = response.json()
-            allowed_hourly_queries = json_response["data"]["api_requests_hourly"][
-                "user"
-            ]["allowed"]
-            used_hourly_queries = json_response["data"]["api_requests_hourly"]["user"][
-                "used"
-            ]
-            remaining_quota = allowed_hourly_queries - used_hourly_queries
+            try:
+                json_response = response.json()
+                allowed_hourly_queries = json_response["data"]["api_requests_hourly"][
+                    "user"
+                ]["allowed"]
+                used_hourly_queries = json_response["data"]["api_requests_hourly"]["user"][
+                    "used"
+                ]
+            except (ValueError, KeyError, TypeError) as e:
+                # A 200 with an unexpected body (HTML from a proxy/WAF, or a
+                # VT API schema change dropping a key) used to propagate
+                # uncaught here, aborting the whole run with a raw
+                # traceback instead of the graceful message the
+                # RequestException branch above already provides.
+                logging.error(f"Error retrieving VT Quota: {e}")
+                if args and not args.non_interactive:
+                    console.print(f"[bold red]Error retrieving VT Quota: {e}[/bold red]")
+                return 0
 
-            return remaining_quota
+            return allowed_hourly_queries - used_hourly_queries
         else:
             # Log and console print on error response
             logging.error(
@@ -519,6 +529,14 @@ def analyze_value_type(
         results.extend(result)
         skipped_values += skipped
         error_values += errors
+        # A cache hit (skipped=1) never touched the VT API, so it doesn't
+        # consume real quota - only decrement for values that did. Without
+        # this, remaining_queries never changes across the loop, so the
+        # `== 0` guard above only ever fires when quota was already
+        # exhausted before this call started, not when a large batch
+        # exhausts it mid-run.
+        if not skipped:
+            remaining_queries -= 1
 
     return results, skipped_values, error_values
 

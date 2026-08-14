@@ -12,6 +12,26 @@ from rich.table import Table
 console = Console()
 
 
+def get_env(name: str, default: str) -> str:
+    """os.getenv with the two-arg default applied when the variable is
+    unset OR present-but-empty.
+
+    A bare `os.getenv(name, default)` only falls back to `default` when the
+    variable is absent from the environment - if it's present but blank
+    (`KEY=` with nothing after the `=`), os.getenv returns that empty
+    string, not the default. .env.example ships several vars this way
+    (VT_CACHE_TTL_HOURS, REDIS_URL, VT_HISTORY_DB_PATH, VTSSLVERIFY,
+    CORS_ALLOWED_ORIGINS), and load_dotenv() sets each to "" rather than
+    leaving it unset - this has caused real crashes (float('') on an empty
+    TTL) and silent misconfiguration (TLS verification disabled, an empty
+    CORS allow-list rejecting every origin) more than once. Route every
+    env-var-with-a-default read through this function instead of a raw
+    two-arg os.getenv call.
+    """
+    value = os.getenv(name)
+    return value if value else default
+
+
 def build_virustotal_link(value, value_type: str) -> str:
     """Build the VirusTotal GUI URL for a given value."""
     if value_type == "URL":
@@ -123,7 +143,7 @@ def get_ssl_verify(env_var: str = "VTSSLVERIFY") -> bool:
     - bool: True to verify the TLS certificate, False to skip verification.
     """
 
-    return os.getenv(env_var, "true").strip().lower() in ("1", "true", "yes", "on")
+    return get_env(env_var, "true").strip().lower() in ("1", "true", "yes", "on")
 
 
 def display_menu() -> str:

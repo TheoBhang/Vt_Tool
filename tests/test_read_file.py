@@ -78,6 +78,22 @@ class ValueReaderTests(unittest.TestCase):
         result = reader.read_from_file()
         self.assertEqual(result, {"ips": [], "urls": [], "hashes": [], "keys": [], "domains": []})
 
+    def test_read_from_csv_file_degrades_gracefully_instead_of_exiting(self):
+        # Regression test: read_from_csv_file() used to call exit(...),
+        # raising SystemExit (uncaught by `except Exception`) and hard-
+        # crashing the whole process on any real -tf invocation. It should
+        # degrade to the same empty-result shape the other guard clauses in
+        # this function already use, not terminate the interpreter.
+        with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False) as f:
+            f.write("value,comment\nexample.com,test\n")
+            path = f.name
+        try:
+            reader = self._reader(fname=path)
+            result = reader.read_from_csv_file()
+            self.assertEqual(result, {"ips": [], "urls": [], "hashes": [], "keys": [], "domains": []})
+        finally:
+            os.remove(path)
+
     def test_read_from_stdin_returns_empty_when_stdin_is_a_tty(self):
         reader = self._reader()
         with mock.patch.object(sys.stdin, "isatty", return_value=True):

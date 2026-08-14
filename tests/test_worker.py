@@ -4,6 +4,8 @@ import unittest
 from datetime import timedelta
 from unittest import mock
 
+from vt import APIError
+
 from app.DataHandler.validator import DataValidator
 from app.cache_backends.sqlite_backend import SQLiteCacheBackend
 from app.services.cache_service import ReportCacheService
@@ -68,7 +70,7 @@ class AnalyzeValueJobTests(unittest.IsolatedAsyncioTestCase):
         # bridging code in vt-py actually runs during this test.
         with mock.patch(
             "vt.Client.get_object_async",
-            new=mock.AsyncMock(side_effect=Exception("NotFoundError raised by vt-py")),
+            new=mock.AsyncMock(side_effect=APIError("NotFoundError", "not found")),
         ):
             report = await analyze_value(self.ctx, "doesnotexist12345.org", "domains", "fake-api-key", None)
 

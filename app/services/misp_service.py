@@ -123,7 +123,22 @@ class MispService:
         logger.info(f"Successfully mapped {len(attribute_mapping)} attributes.")
         return attribute_mapping
 
-    def create_object(self, row: Dict[str, str], object_name: str, attribute_mapping: Dict[str, tuple]) -> Optional[MISPObject]:
+    def create_object(
+        self,
+        row: Dict[str, str],
+        object_name: str,
+        attribute_mapping: Dict[str, tuple],
+        errors: Optional[List[str]] = None,
+    ) -> Optional[MISPObject]:
+        """Builds a MISPObject from an already-analyzed row, or returns None
+        on failure (logged server-side either way). `errors` is optional and
+        backward-compatible with existing callers that don't pass it (the
+        CLI path never has - a per-row failure there was always meant to be
+        silently skipped and logged, matching objects_from_csv's own
+        behavior) - callers that DO care why an item was skipped (the API's
+        MISP push endpoint) pass a list to collect the message into, so a
+        systematic misconfiguration doesn't show up as an opaque
+        "N skipped" with zero diagnostic detail anywhere the caller can see."""
         try:
             misp_object = MISPObject(name=object_name)
             misp_object.comment = row.get("comment", "")
@@ -153,6 +168,8 @@ class MispService:
             return misp_object
         except Exception as e:
             logger.error(f"Failed to create MISP object from row: {row}. Error: {e}")
+            if errors is not None:
+                errors.append(str(e))
             return None
 
     def objects_from_csv(

@@ -309,13 +309,13 @@ class ValueReader:
             print(f"File {self.fname} does not exist")
             return self._get_empty_values()
 
-        try:
-            exit("CSV file reading not implemented yet")
-
-        except (IOError, Exception) as e:
-            # Catch any I/O or unexpected errors
-            print(f"Error reading file {self.fname}: {e}")
-            return self._get_empty_values
+        # CSV template reading is not implemented yet - degrade gracefully
+        # (empty result, caller's existing "no values to analyze" handling)
+        # rather than the previous exit() call, which raised SystemExit and
+        # hard-crashed the whole process since SystemExit isn't caught by
+        # `except Exception`.
+        print(f"CSV template file reading is not implemented yet: {self.fname}")
+        return self._get_empty_values()
 
     def _process_file_lines(self, value_extractor: ValueExtractor):
         """

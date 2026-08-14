@@ -81,9 +81,35 @@ class GetProxyTests(unittest.TestCase):
             self.assertIsNone(utils.get_proxy())
 
 
+class GetEnvTests(unittest.TestCase):
+    def test_returns_value_when_set(self):
+        with mock.patch.dict(os.environ, {"SOME_VAR": "value"}, clear=True):
+            self.assertEqual(utils.get_env("SOME_VAR", "default"), "value")
+
+    def test_returns_default_when_unset(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(utils.get_env("SOME_VAR", "default"), "default")
+
+    def test_returns_default_when_present_but_empty(self):
+        # Regression test: a bare os.getenv(name, default) only falls back
+        # when the var is absent - .env.example ships several vars as blank
+        # `KEY=` lines, and load_dotenv() sets those to "" rather than
+        # leaving them unset, silently defeating a raw two-arg getenv call.
+        with mock.patch.dict(os.environ, {"SOME_VAR": ""}, clear=True):
+            self.assertEqual(utils.get_env("SOME_VAR", "default"), "default")
+
+
 class GetSslVerifyTests(unittest.TestCase):
     def test_defaults_to_true_when_unset(self):
         with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertTrue(utils.get_ssl_verify())
+
+    def test_defaults_to_true_when_present_but_empty(self):
+        # Regression test: VTSSLVERIFY="" used to silently disable TLS
+        # certificate verification for every VirusTotal request, since a
+        # raw os.getenv(env_var, "true") returns "" (falsy in the
+        # (...) in ("1","true","yes","on") check), not "true".
+        with mock.patch.dict(os.environ, {"VTSSLVERIFY": ""}, clear=True):
             self.assertTrue(utils.get_ssl_verify())
 
     def test_reads_false_from_env_var(self):

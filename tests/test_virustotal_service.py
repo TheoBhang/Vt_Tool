@@ -1,6 +1,8 @@
 import unittest
 from unittest import mock
 
+from vt import APIError
+
 from app.DataHandler.validator import get_service_name
 from app.errors import VirusTotalAPIError
 from app.services.virustotal_service import VirusTotalService
@@ -24,7 +26,7 @@ class CreateReportTests(unittest.TestCase):
 
     def test_not_found_returns_default_object_no_exception(self):
         vt_client = mock.Mock()
-        vt_client.get_object.side_effect = Exception("NotFoundError raised by vt-py")
+        vt_client.get_object.side_effect = APIError("NotFoundError", "not found")
         service = VirusTotalService(vt_client)
         result = service.get_report("DOMAIN", "nosuch.example")
         self.assertEqual(result["malicious_score"], 0)
@@ -35,6 +37,20 @@ class CreateReportTests(unittest.TestCase):
     def test_other_errors_raise_virustotal_api_error(self):
         vt_client = mock.Mock()
         vt_client.get_object.side_effect = RuntimeError("network down")
+        service = VirusTotalService(vt_client)
+        with self.assertRaises(VirusTotalAPIError):
+            service.get_report("DOMAIN", "example.com")
+
+    def test_error_message_mentioning_not_found_is_not_miscategorized(self):
+        # Regression test: not-found detection used to substring-match
+        # "NotFoundError" in str(e) - a transient error whose message merely
+        # mentions that string (without actually being a not-found response)
+        # would be miscategorized as "not found" and cached as a synthetic
+        # 0-malicious/0-scans result instead of surfacing the real failure.
+        vt_client = mock.Mock()
+        vt_client.get_object.side_effect = APIError(
+            "QuotaExceededError", "proxy relayed a NotFoundError from a different upstream"
+        )
         service = VirusTotalService(vt_client)
         with self.assertRaises(VirusTotalAPIError):
             service.get_report("DOMAIN", "example.com")

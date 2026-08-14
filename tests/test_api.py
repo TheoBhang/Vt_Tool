@@ -227,6 +227,28 @@ class CorsTests(unittest.TestCase):
         # and which this reload doesn't affect either way).
         importlib.reload(main_module)
 
+    def test_present_but_empty_falls_back_to_wildcard(self):
+        # Regression test: a raw os.getenv("CORS_ALLOWED_ORIGINS", "*")
+        # returns "" (not "*") when the var is present but blank, and
+        # "".split(",") -> [''] -> filtered to an empty allow_origins list -
+        # silently rejecting every origin instead of falling back to the
+        # permissive default.
+        import importlib
+        import app.api.main as main_module
+
+        with mock.patch.dict(os.environ, {"CORS_ALLOWED_ORIGINS": ""}):
+            importlib.reload(main_module)
+            client = TestClient(main_module.app)
+            response = client.options(
+                "/analyze",
+                headers={
+                    "Origin": "http://localhost:5173",
+                    "Access-Control-Request-Method": "POST",
+                },
+            )
+            self.assertEqual(response.headers.get("access-control-allow-origin"), "*")
+        importlib.reload(main_module)
+
 
 class HistoryEndpointTests(unittest.TestCase):
     def setUp(self):
@@ -355,6 +377,22 @@ class MispPushEndpointTests(unittest.TestCase):
         detail = self.client.get(f"/analyses/{self.saved['id']}").json()
         self.assertEqual(detail["misp_event_id"], "42")
         self.assertEqual(detail["case_label"], "incident-1")
+
+    def test_history_bookkeeping_failure_after_a_successful_push_returns_502(self):
+        # Regression test: set_misp_event_id() used to run outside the
+        # try/except wrapping the MISP push - a failure there (e.g. a
+        # sqlite lock) used to propagate as a raw unhandled 500 even though
+        # the objects were already genuinely submitted to MISP, risking a
+        # client retry that would re-push the same objects.
+        fake_event = mock.Mock(id="42")
+        with mock.patch.dict(os.environ, {"MISPURL": "https://misp.example", "MISPKEY": "key"}), \
+             mock.patch("app.api.main.ExpandedPyMISP"), \
+             mock.patch("app.api.main.get_misp_event", return_value=fake_event), \
+             mock.patch("app.api.main.submit_misp_objects", return_value=1), \
+             mock.patch.object(app.state.history, "set_misp_event_id", side_effect=RuntimeError("db locked")):
+            response = self.client.post(f"/analyses/{self.saved['id']}/misp-push", json={})
+
+        self.assertEqual(response.status_code, 502)
 
     def test_flattens_nested_info_ip_fields_before_building_the_misp_object(self):
         # A realistic full IP report shape, as VirusTotalService._populate_ip

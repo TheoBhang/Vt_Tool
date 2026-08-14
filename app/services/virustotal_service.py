@@ -1,6 +1,6 @@
 import logging
 
-from vt import url_id
+from vt import APIError, url_id
 
 from app.DataHandler.utils import utc2local, build_virustotal_link
 from app.DataHandler.validator import (
@@ -46,10 +46,19 @@ class VirusTotalService:
             raise VirusTotalAPIError(f"No VirusTotal endpoint for value type: {value_type}")
         try:
             return self.vt.get_object(api_endpoints[value_type])
-        except Exception as e:
-            if "NotFoundError" in str(e):
+        except APIError as e:
+            # Check the SDK's structured error code, not a substring match
+            # on str(e) - a transient network/proxy error whose message
+            # happens to contain "NotFoundError" would otherwise be
+            # miscategorized as a genuine not-found and get cached as a
+            # synthetic 0-malicious/0-scans result, silently masking a
+            # retryable failure as a permanent false negative.
+            if e.code == "NotFoundError":
                 logger.warning(f"{NOT_FOUND_ERROR} on VirusTotal Database: {value}")
                 return None
+            logger.error(f"Error fetching report for {value_type}: {value} - {e}")
+            raise VirusTotalAPIError(str(e)) from e
+        except Exception as e:
             logger.error(f"Error fetching report for {value_type}: {value} - {e}")
             raise VirusTotalAPIError(str(e)) from e
 

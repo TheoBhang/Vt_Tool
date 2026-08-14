@@ -2,6 +2,8 @@ import tempfile
 import unittest
 from unittest import mock
 
+from vt import APIError
+
 from app.cache_backends.sqlite_backend import SQLiteCacheBackend
 from app.services.analysis_service import AnalysisService
 from app.services.cache_service import ReportCacheService
@@ -31,7 +33,7 @@ class AnalysisServiceIntegrationTests(unittest.TestCase):
         # reaching VirusTotalService - unrelated to the bug under test. Use a
         # syntactically-ordinary domain instead so classify() succeeds and the
         # VT lookup is what returns not-found.
-        self.vt_client.get_object.side_effect = Exception("NotFoundError raised by vt-py")
+        self.vt_client.get_object.side_effect = APIError("NotFoundError", "not found")
 
         report, from_cache = self.service.analyze("doesnotexist12345.org", "domains")
 
@@ -62,7 +64,7 @@ class AnalysisServiceIntegrationTests(unittest.TestCase):
         found_report.registrar = ""
 
         self.vt_client.get_object.side_effect = [
-            Exception("NotFoundError raised by vt-py"),
+            APIError("NotFoundError", "not found"),
             found_report,
         ]
 

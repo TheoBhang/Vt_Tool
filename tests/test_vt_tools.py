@@ -67,6 +67,37 @@ class GetRemainingQuotaTests(unittest.TestCase):
         with mock.patch("vt_tools.requests.Session", return_value=FakeSession()):
             self.assertEqual(vt_tools.get_remaining_quota("key", None, None), 380)
 
+    def test_returns_zero_on_malformed_json_body(self):
+        # Regression test: a 200 response with an unexpected body (HTML from
+        # a proxy/WAF, or a VT API schema change dropping a key) used to
+        # propagate a raw JSONDecodeError/KeyError uncaught, aborting the
+        # whole run instead of the graceful "Error retrieving VT Quota"
+        # message the RequestException branch already provides.
+        class FakeResponse:
+            status_code = 200
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"unexpected": "shape"}
+
+        class FakeSession:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc_info):
+                return False
+
+            def __init__(self):
+                self.proxies = {}
+
+            def get(self, url, headers=None, verify=None):
+                return FakeResponse()
+
+        with mock.patch("vt_tools.requests.Session", return_value=FakeSession()):
+            self.assertEqual(vt_tools.get_remaining_quota("key", None, None), 0)
+
     def test_returns_zero_on_request_exception(self):
         import requests
 
@@ -189,6 +220,38 @@ class AnalyzeSingleValueTests(unittest.TestCase):
         self.assertEqual(results, [])
         self.assertEqual(skipped, 0)
         self.assertEqual(errs, 1)
+
+
+class AnalyzeValueTypeTests(unittest.TestCase):
+    def test_stops_early_once_quota_is_exhausted_mid_run(self):
+        # Regression test: remaining_queries was never decremented inside
+        # the loop, so the `== 0` guard only ever fired when quota was
+        # already zero before this call started - a large batch would run
+        # to completion regardless of how little real quota was left.
+        init = mock.Mock()
+        init.analysis.analyze.return_value = ({"malicious_score": 0}, False)  # cache miss every time
+        values = ["a.com", "b.com", "c.com", "d.com"]
+
+        results, skipped, errors = vt_tools.analyze_value_type(init, "domains", values, remaining_queries=2)
+
+        self.assertEqual(init.analysis.analyze.call_count, 2)
+        self.assertEqual(len(results), 2)
+        self.assertEqual(skipped, 0)
+        self.assertEqual(errors, 0)
+
+    def test_cache_hits_do_not_consume_quota(self):
+        init = mock.Mock()
+        init.analysis.analyze.return_value = ({"malicious_score": 0}, True)  # cache hit every time
+        values = ["a.com", "b.com", "c.com"]
+
+        results, skipped, errors = vt_tools.analyze_value_type(init, "domains", values, remaining_queries=1)
+
+        # All 3 are cache hits, so 1 unit of real quota is never spent -
+        # every value gets processed despite remaining_queries starting at 1.
+        self.assertEqual(init.analysis.analyze.call_count, 3)
+        self.assertEqual(len(results), 3)
+        self.assertEqual(skipped, 3)
+        self.assertEqual(errors, 0)
 
 
 if __name__ == "__main__":

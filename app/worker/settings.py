@@ -1,7 +1,6 @@
-import os
-
 from arq.connections import RedisSettings
 
+from app.DataHandler.utils import get_env
 from app.DataHandler.validator import DataValidator
 from app.services.cache_config import build_cache_service
 from app.services.validation_service import ValidationService
@@ -24,4 +23,4 @@ class WorkerSettings:
     functions = [analyze_value]
     on_startup = startup
     on_shutdown = shutdown
-    redis_settings = RedisSettings.from_dsn(os.getenv("REDIS_URL", "redis://localhost:6379"))
+    redis_settings = RedisSettings.from_dsn(get_env("REDIS_URL", "redis://localhost:6379"))

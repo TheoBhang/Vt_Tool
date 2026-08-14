@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pymisp import ExpandedPyMISP
 
+from app.DataHandler.utils import get_env
 from app.DataHandler.validator import DataValidator
 from app.errors import ValidationError
 from app.MISP.vt_tools2misp import get_misp_event, submit_misp_objects
@@ -28,9 +29,9 @@ async def lifespan(app: FastAPI):
         cache=build_cache_service(),
     )
     app.state.redis = await create_pool(
-        RedisSettings.from_dsn(os.getenv("REDIS_URL", "redis://localhost:6379"))
+        RedisSettings.from_dsn(get_env("REDIS_URL", "redis://localhost:6379"))
     )
-    app.state.history = HistoryService(os.getenv("VT_HISTORY_DB_PATH", "vttools.sqlite"))
+    app.state.history = HistoryService(get_env("VT_HISTORY_DB_PATH", "vttools.sqlite"))
     yield
     app.state.analysis.cache.backend.close()
     app.state.history.close()
@@ -41,7 +42,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in os.getenv("CORS_ALLOWED_ORIGINS", "*").split(",") if o.strip()],
+    allow_origins=[o.strip() for o in get_env("CORS_ALLOWED_ORIGINS", "*").split(",") if o.strip()],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -190,23 +191,50 @@ async def push_analysis_to_misp(analysis_id: str, payload: MispPushRequest, requ
         misp_service = MispService()
         misp_objects = []
         skipped_count = 0
+        skip_reasons = []
         for item in analysis["items"]:
             report = item.get("report")
             object_name = OBJECT_NAME_BY_VALUE_TYPE.get(item["value_type"])
-            if not report or object_name is None:
+            if not report:
                 skipped_count += 1
+                skip_reasons.append(f"{item['value']}: no report data")
+                continue
+            if object_name is None:
+                skipped_count += 1
+                skip_reasons.append(f"{item['value']}: unsupported value_type '{item['value_type']}'")
                 continue
             attribute_mapping = {**ATTRIBUTE_TYPE_MAPPING[object_name], **ATTRIBUTE_TYPE_MAPPING["general"]}
-            misp_object = misp_service.create_object(_flatten_report_for_misp(report), object_name, attribute_mapping)
+            object_errors: list[str] = []
+            misp_object = misp_service.create_object(
+                _flatten_report_for_misp(report), object_name, attribute_mapping, errors=object_errors
+            )
             if misp_object is None:
                 skipped_count += 1
+                reason = object_errors[0] if object_errors else "could not build MISP object"
+                skip_reasons.append(f"{item['value']}: {reason}")
                 continue
             misp_objects.append(misp_object)
 
         pushed_count = submit_misp_objects(misp, misp_event, misp_objects)
+        # Recording the event id is part of the same MISP-push operation as
+        # far as the caller is concerned - if this write fails (e.g. a
+        # sqlite lock under concurrent history writes), the objects were
+        # still genuinely submitted to MISP, so a raw unhandled 500 here
+        # would make the client believe the push failed and potentially
+        # retry, re-submitting the same objects with no idempotency check.
+        # Folding it into the same try/except at least surfaces it as the
+        # same clean 502 every other MISP-interaction failure gets.
+        history.set_misp_event_id(analysis_id, str(misp_event.id), payload.case_id)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"MISP push failed: {e}")
 
-    skipped_count += len(misp_objects) - pushed_count
-    history.set_misp_event_id(analysis_id, str(misp_event.id), payload.case_id)
-    return {"event_id": str(misp_event.id), "pushed_count": pushed_count, "skipped_count": skipped_count}
+    rejected_by_misp = len(misp_objects) - pushed_count
+    if rejected_by_misp:
+        skip_reasons.append(f"{rejected_by_misp} object(s) built successfully but MISP rejected them (see server logs)")
+    skipped_count += rejected_by_misp
+    return {
+        "event_id": str(misp_event.id),
+        "pushed_count": pushed_count,
+        "skipped_count": skipped_count,
+        "skip_reasons": skip_reasons,
+    }
