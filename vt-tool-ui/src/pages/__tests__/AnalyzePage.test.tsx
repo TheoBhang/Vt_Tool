@@ -22,6 +22,11 @@ describe("AnalyzePage", () => {
   beforeEach(() => {
     setApiKey("fake-key");
     vi.spyOn(endpoints, "health").mockResolvedValue({ status: "ok" });
+    vi.spyOn(endpoints, "saveAnalysis").mockResolvedValue({
+      id: "saved-analysis-1",
+      created_at: "2026-08-14T00:00:00Z",
+      case_label: null,
+    });
   });
 
   it("takes a user from paste through review to a rendered hit result", async () => {
@@ -76,6 +81,25 @@ describe("AnalyzePage", () => {
 
     await waitFor(() => expect(screen.getByText("CLEAN")).toBeInTheDocument());
     expect(screen.getByText("bad value")).toBeInTheDocument();
+  });
+
+  it("auto-saves the batch to history once resolved, and shows the push-to-MISP control", async () => {
+    const saveSpy = vi.spyOn(endpoints, "saveAnalysis");
+    vi.spyOn(endpoints, "analyze").mockResolvedValue([
+      { status: "hit", report: { domain: "example.com", malicious_score: 0, total_scans: 90 } },
+    ]);
+
+    renderPage();
+
+    await userEvent.type(screen.getByRole("textbox", { name: /paste iocs/i }), "example.com");
+    await userEvent.click(screen.getByRole("button", { name: /review/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^analyze$/i }));
+
+    await waitFor(() => expect(screen.getByText("CLEAN")).toBeInTheDocument());
+    await waitFor(() => expect(saveSpy).toHaveBeenCalledWith({
+      items: [{ value: "example.com", value_type: "domains", report: { domain: "example.com", malicious_score: 0, total_scans: 90 }, error: null }],
+    }));
+    expect(screen.getByRole("button", { name: /push to misp/i })).toBeInTheDocument();
   });
 
   it("shows a warning banner linking to Settings when no API key is stored", () => {
