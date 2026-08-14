@@ -102,9 +102,9 @@ export default function AnalyzePage() {
     <Stack spacing={3}>
       <Typography variant="h4">Analyze</Typography>
       {!hasApiKey && (
-        <Alert severity="warning">
-          No VirusTotal API key set. <Link component={RouterLink} to="/settings">Add one in Settings</Link> before
-          analyzing.
+        <Alert severity="error">
+          No VirusTotal API key set — analyzing is disabled until you{" "}
+          <Link component={RouterLink} to="/settings">add one in Settings</Link>.
         </Alert>
       )}
       {!reviewItems && <IocInput onParsed={setReviewItems} />}
@@ -117,7 +117,12 @@ export default function AnalyzePage() {
                   {error instanceof Error ? error.message : "Failed to submit analysis. Please try again."}
                 </Alert>
               )}
-              <IocReviewTable items={reviewItems} onChange={setReviewItems} onSubmit={handleSubmit} />
+              <IocReviewTable
+                items={reviewItems}
+                onChange={setReviewItems}
+                onSubmit={handleSubmit}
+                disableSubmit={!hasApiKey}
+              />
             </>
           ) : (
             <>

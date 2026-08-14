@@ -15,9 +15,10 @@ interface IocReviewTableProps {
   items: ClassifiedIoc[];
   onChange: (items: ClassifiedIoc[]) => void;
   onSubmit: (items: ClassifiedIoc[]) => void;
+  disableSubmit: boolean;
 }
 
-export default function IocReviewTable({ items, onChange, onSubmit }: IocReviewTableProps) {
+export default function IocReviewTable({ items, onChange, onSubmit, disableSubmit }: IocReviewTableProps) {
   const unrecognizedCount = items.filter((item) => item.type === "unrecognized").length;
   const submittable = items.filter((item) => item.type !== "unrecognized");
 
@@ -54,7 +55,11 @@ export default function IocReviewTable({ items, onChange, onSubmit }: IocReviewT
           ))}
         </TableBody>
       </Table>
-      <Button variant="contained" disabled={submittable.length === 0} onClick={() => onSubmit(submittable)}>
+      <Button
+        variant="contained"
+        disabled={submittable.length === 0 || disableSubmit}
+        onClick={() => onSubmit(submittable)}
+      >
         Analyze
       </Button>
     </>

@@ -102,11 +102,28 @@ describe("AnalyzePage", () => {
     expect(screen.getByRole("button", { name: /push to misp/i })).toBeInTheDocument();
   });
 
-  it("shows a warning banner linking to Settings when no API key is stored", () => {
+  it("shows a banner linking to Settings when no API key is stored", () => {
     localStorage.clear();
     renderPage();
 
     expect(screen.getByText(/no virustotal api key set/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /add one in settings/i })).toHaveAttribute("href", "/settings");
+  });
+
+  it("blocks submission when no API key is stored, even with a reviewed batch", async () => {
+    // Regression test: the banner alone used to be advisory only - a user
+    // could still click Analyze with no key set, silently submitting an
+    // empty key and getting a confusing backend crash instead of ever
+    // being told why.
+    localStorage.clear();
+    const analyzeSpy = vi.spyOn(endpoints, "analyze");
+    analyzeSpy.mockClear();
+    renderPage();
+
+    await userEvent.type(screen.getByRole("textbox", { name: /paste iocs/i }), "example.com");
+    await userEvent.click(screen.getByRole("button", { name: /review/i }));
+
+    expect(screen.getByRole("button", { name: /^analyze$/i })).toBeDisabled();
+    expect(analyzeSpy).not.toHaveBeenCalled();
   });
 });
