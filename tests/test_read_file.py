@@ -93,6 +93,42 @@ class ValueReaderTests(unittest.TestCase):
         self.assertIn("8.8.8.8", [ip for ip, _ in result["ips"]])
         self.assertIn("example.com", result["domains"])
 
+    def test_read_from_values_extracts_positional_cli_values(self):
+        reader = ValueReader(None, ["example.com", "8.8.8.8"])
+        result = reader.read_from_values()
+        self.assertIn("example.com", result["domains"])
+        self.assertIn("8.8.8.8", [ip for ip, _ in result["ips"]])
+
+    def test_read_from_values_returns_empty_when_no_values_given(self):
+        reader = self._reader()
+        result = reader.read_from_values()
+        self.assertEqual(result, {"ips": [], "urls": [], "hashes": [], "keys": [], "domains": []})
+
+    def test_read_values_includes_positional_cli_values(self):
+        # Regression test: `python vt_tools.py example.com` used to silently
+        # analyze nothing - ValueReader stored args.values but read_values()
+        # never read it, only stdin and a file.
+        reader = ValueReader(None, ["example.com"])
+        with mock.patch.object(sys.stdin, "isatty", return_value=True):
+            result = reader.read_values()
+        self.assertIn("example.com", result["domains"])
+
+    def test_read_values_survives_open_but_empty_stdin_with_cli_values(self):
+        # Regression test: when stdin is open but not a tty and yields zero
+        # lines (e.g. non-interactive/automated runs with no terminal
+        # attached - exactly what -n mode is for), read_from_stdin() returns
+        # a bare {} with no keys at all. _combine_and_clean_values used to
+        # iterate only the first dict's keys, silently dropping everything
+        # from the second dict - including CLI positional values - and
+        # raising KeyError downstream when combined_values had no 'domains'
+        # key at all.
+        reader = ValueReader(None, ["example.com"])
+        empty_stdin = io.StringIO("")
+        with mock.patch.object(sys, "stdin", empty_stdin):
+            with mock.patch.object(empty_stdin, "isatty", return_value=False):
+                result = reader.read_values()
+        self.assertIn("example.com", result["domains"])
+
     def test_read_values_narrows_keys_and_reads_file(self):
         with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
             f.write("example.com\n")

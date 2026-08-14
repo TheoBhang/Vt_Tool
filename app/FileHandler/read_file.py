@@ -364,21 +364,43 @@ class ValueReader:
         # Return the final cleaned dictionary
         return self._extract_and_filter_domains(combined_values)
 
+    def read_from_values(self) -> dict:
+        """
+        Extract values passed directly as positional command-line arguments.
+
+        Returns:
+            dict: A dictionary with keys 'ips', 'urls', 'hashes', 'keys', and 'domains'.
+        """
+        if not self.values:
+            return self._get_empty_values()
+
+        value_extractor = ValueExtractor()
+        dict_values_cli: Dict[str, List[str]] = defaultdict(list)
+        for value in self.values:
+            line_values = value_extractor.sort_values(value, is_file=False)
+            for key, values in line_values.items():
+                dict_values_cli[key].extend(values)
+
+        return dict(dict_values_cli)
+
     def read_values(self) -> dict:
         """
-        Read values from standard input and file, remove duplicates and None values, 
-        and extract domains. Returns a dictionary with the extracted values.
+        Read values from standard input, a file, and positional command-line
+        arguments, remove duplicates and None values, and extract domains.
+        Returns a dictionary with the extracted values.
 
         Returns:
             dict: A dictionary with 'ips', 'urls', 'hashes', 'domains' as keys, each
                   containing a list of unique extracted values.
         """
-        # Read values from standard input and file
+        # Read values from standard input, file, and CLI positional arguments
         stdin_values = self.read_from_stdin()
         file_values = self.read_from_file()
+        cli_values = self.read_from_values()
 
         # Combine values and remove duplicates and None values
         combined_values = self._combine_and_clean_values(stdin_values, file_values)
+        combined_values = self._combine_and_clean_values(combined_values, cli_values)
 
         # Return the final cleaned dictionary
         return self._extract_and_filter_domains(combined_values)
@@ -395,10 +417,15 @@ class ValueReader:
             dict: A dictionary with keys 'ips', 'urls', 'hashes', 'keys', and 'domains',
                   containing the merged and cleaned values.
         """
-        # Merge values from stdin and file and deduplicate
+        # Merge values from stdin and file and deduplicate. Union of both
+        # dicts' keys, not just stdin_values' - read_from_stdin() can return
+        # a bare {} (no keys at all) when stdin is open but has zero lines
+        # (e.g. non-interactive mode with no tty attached), and iterating
+        # only stdin_values.keys() would then silently drop every key
+        # file_values has, however many keys it may have.
         combined_values = defaultdict(list)
-        for key in stdin_values.keys():
-            combined_values[key] = list(set(stdin_values[key] + file_values[key]))
+        for key in set(stdin_values.keys()) | set(file_values.keys()):
+            combined_values[key] = list(set(stdin_values.get(key, []) + file_values.get(key, [])))
 
         # Remove None values from the lists
         return {key: list(filter(None, values)) for key, values in combined_values.items()}
