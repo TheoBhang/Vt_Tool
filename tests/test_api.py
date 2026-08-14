@@ -313,24 +313,36 @@ class MispPushEndpointTests(unittest.TestCase):
             response = self.client.post("/analyses/does-not-exist/misp-push", json={})
         self.assertEqual(response.status_code, 404)
 
-    def test_pushes_the_valid_item_and_skips_the_one_with_no_report(self):
+    def test_pushes_both_valid_items_in_one_batch_and_skips_the_one_with_no_report(self):
+        # Two items must BOTH successfully build a MISPObject here - with only
+        # one surviving item, "submit once with a 2-item list" and "submit
+        # once per item" would be indistinguishable from the assertions below.
+        saved = self.client.post("/analyses", json={"items": [
+            {"value": "8.8.8.8", "value_type": "ips", "report": {"ip": "8.8.8.8", "malicious_score": 0}, "error": None},
+            {"value": "example.com", "value_type": "domains", "report": {"domain": "example.com", "malicious_score": 0}, "error": None},
+            {"value": "bad.example", "value_type": "domains", "report": None, "error": "Wrong API key"},
+        ]}).json()
+
         fake_event = mock.Mock(id="42")
         with mock.patch.dict(os.environ, {"MISPURL": "https://misp.example", "MISPKEY": "key"}), \
              mock.patch("app.api.main.ExpandedPyMISP") as mock_misp_cls, \
              mock.patch("app.api.main.get_misp_event", return_value=fake_event) as mock_get_event, \
              mock.patch("app.api.main.submit_misp_objects") as mock_submit:
-            response = self.client.post(f"/analyses/{self.saved['id']}/misp-push", json={"case_id": "incident-1"})
+            response = self.client.post(f"/analyses/{saved['id']}/misp-push", json={"case_id": "incident-1"})
 
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertEqual(body["event_id"], "42")
-        self.assertEqual(body["pushed_count"], 1)
+        self.assertEqual(body["pushed_count"], 2)
         self.assertEqual(body["skipped_count"], 1)
         mock_misp_cls.assert_called_once_with("https://misp.example", "key", False)
         mock_get_event.assert_called_once()
+        # Exactly one call, with both successfully-built objects in a single
+        # batch - not one call per item. If a future change moves
+        # submit_misp_objects inside the per-item loop, this becomes 2 calls
+        # (or 1 call with a 1-item list) and fails.
         mock_submit.assert_called_once()
-        # submit_misp_objects's 3rd positional arg is the list of built MISPObjects - exactly 1 (the skipped item never got one built).
-        self.assertEqual(len(mock_submit.call_args.args[2]), 1)
+        self.assertEqual(len(mock_submit.call_args.args[2]), 2)
 
     def test_a_successful_push_records_the_event_id_and_case_label_in_history(self):
         fake_event = mock.Mock(id="42")
