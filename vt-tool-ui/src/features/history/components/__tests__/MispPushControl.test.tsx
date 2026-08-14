@@ -24,7 +24,7 @@ describe("MispPushControl", () => {
   });
 
   it("pushes with the entered case id and shows the result", async () => {
-    const spy = vi.spyOn(endpoints, "pushToMisp").mockResolvedValue({ event_id: "42", pushed_count: 3, skipped_count: 1 });
+    const spy = vi.spyOn(endpoints, "pushToMisp").mockResolvedValue({ event_id: "42", pushed_count: 3, skipped_count: 1, skip_reasons: ["example.com: no report data"] });
     renderWithClient(<MispPushControl analysisId="abc123" mispEventId={null} />);
 
     await userEvent.type(screen.getByLabelText(/case id/i), "incident-1");

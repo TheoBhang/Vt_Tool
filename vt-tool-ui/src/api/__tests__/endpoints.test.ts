@@ -84,12 +84,12 @@ describe("getAnalysis", () => {
 describe("pushToMisp", () => {
   it("posts the case id and returns the push result", async () => {
     const spy = vi.spyOn(client, "post").mockResolvedValue({
-      data: { event_id: "42", pushed_count: 1, skipped_count: 0 },
+      data: { event_id: "42", pushed_count: 1, skipped_count: 0, skip_reasons: [] },
     });
 
     const result = await pushToMisp("abc123", "incident-1");
 
     expect(spy).toHaveBeenCalledWith("/analyses/abc123/misp-push", { case_id: "incident-1" });
-    expect(result).toEqual({ event_id: "42", pushed_count: 1, skipped_count: 0 });
+    expect(result).toEqual({ event_id: "42", pushed_count: 1, skipped_count: 0, skip_reasons: [] });
   });
 });

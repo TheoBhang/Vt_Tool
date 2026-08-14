@@ -85,6 +85,7 @@ export interface MispPushResult {
   event_id: string;
   pushed_count: number;
   skipped_count: number;
+  skip_reasons: string[];
 }
 
 export async function saveAnalysis(request: SaveAnalysisRequest): Promise<SaveAnalysisResponse> {

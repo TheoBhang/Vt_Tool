@@ -64,7 +64,7 @@ test("submit -> auto-save -> push to MISP -> visible in history, against a mocke
     }),
   );
   await page.route("**/analyses/analysis-1/misp-push", (route) =>
-    route.fulfill({ json: { event_id: "42", pushed_count: 1, skipped_count: 0 } }),
+    route.fulfill({ json: { event_id: "42", pushed_count: 1, skipped_count: 0, skip_reasons: [] } }),
   );
 
   await page.goto("/");

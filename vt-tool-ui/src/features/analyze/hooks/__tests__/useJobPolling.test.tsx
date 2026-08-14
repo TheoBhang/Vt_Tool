@@ -2,13 +2,48 @@ import { describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { useJobPolling, useJobsPolling } from "../useJobPolling";
+import { shouldKeepPolling, useJobPolling, useJobsPolling } from "../useJobPolling";
 import * as endpoints from "../../../../api/endpoints";
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient();
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
+
+describe("shouldKeepPolling", () => {
+  // Regression tests: shouldKeepPolling used to look only at query.state.data,
+  // which stays undefined forever when getJob() keeps rejecting - TanStack's
+  // own per-cycle retries would exhaust, the cycle would end in an error
+  // state, and refetchInterval would just schedule another cycle anyway,
+  // polling a permanently-broken endpoint every 2s indefinitely.
+  it("stops polling once the query has settled into an error state", () => {
+    const result = shouldKeepPolling({ state: { data: undefined, status: "error" } });
+    expect(result).toBe(false);
+  });
+
+  it("keeps polling while pending with no data yet", () => {
+    const result = shouldKeepPolling({ state: { data: undefined, status: "pending" } });
+    expect(result).toBe(2000);
+  });
+
+  it("stops polling once the job reaches a terminal status", () => {
+    const complete = shouldKeepPolling({
+      state: { data: { status: "complete", report: null, error: null }, status: "success" },
+    });
+    const failed = shouldKeepPolling({
+      state: { data: { status: "failed", report: null, error: "boom" }, status: "success" },
+    });
+    expect(complete).toBe(false);
+    expect(failed).toBe(false);
+  });
+
+  it("keeps polling for a non-terminal job status", () => {
+    const result = shouldKeepPolling({
+      state: { data: { status: "in_progress", report: null, error: null }, status: "success" },
+    });
+    expect(result).toBe(2000);
+  });
+});
 
 describe("useJobPolling", () => {
   it("is disabled when jobId is null", () => {

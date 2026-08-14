@@ -12,7 +12,7 @@ function wrapper({ children }: { children: ReactNode }) {
 
 describe("useMispPush", () => {
   it("calls pushToMisp() with the analysis id and the given case id", async () => {
-    const spy = vi.spyOn(endpoints, "pushToMisp").mockResolvedValue({ event_id: "42", pushed_count: 1, skipped_count: 0 });
+    const spy = vi.spyOn(endpoints, "pushToMisp").mockResolvedValue({ event_id: "42", pushed_count: 1, skipped_count: 0, skip_reasons: [] });
 
     const { result } = renderHook(() => useMispPush("abc123"), { wrapper });
     result.current.mutate("incident-1");
