@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Alert, Button, Stack, Typography } from "@mui/material";
+import { Alert, Button, Link, Stack, Typography } from "@mui/material";
+import { Link as RouterLink } from "react-router-dom";
 import IocInput from "../features/analyze/components/IocInput";
 import IocReviewTable from "../features/analyze/components/IocReviewTable";
 import KpiCards from "../features/analyze/components/KpiCards";
@@ -8,6 +9,7 @@ import { useAnalyze } from "../features/analyze/hooks/useAnalyze";
 import { useJobsPolling } from "../features/analyze/hooks/useJobPolling";
 import type { ClassifiedIoc } from "../features/analyze/lib/classifyIoc";
 import type { AnalyzeResult, Report } from "../api/endpoints";
+import { getApiKey } from "../shared/lib/apiKeyStorage";
 
 interface ResolvedRow {
   value: string;
@@ -19,6 +21,7 @@ export default function AnalyzePage() {
   const [reviewItems, setReviewItems] = useState<ClassifiedIoc[] | null>(null);
   const [submittedItems, setSubmittedItems] = useState<ClassifiedIoc[] | null>(null);
   const { mutate, data: results, isError, error, reset } = useAnalyze();
+  const hasApiKey = Boolean(getApiKey());
 
   // Job ids for whichever results came back "queued" - this array's length
   // changes between renders (0 before submit, N after), which is exactly why
@@ -68,6 +71,12 @@ export default function AnalyzePage() {
   return (
     <Stack spacing={3}>
       <Typography variant="h4">Analyze</Typography>
+      {!hasApiKey && (
+        <Alert severity="warning">
+          No VirusTotal API key set. <Link component={RouterLink} to="/settings">Add one in Settings</Link> before
+          analyzing.
+        </Alert>
+      )}
       {!reviewItems && <IocInput onParsed={setReviewItems} />}
       {reviewItems && (
         <>

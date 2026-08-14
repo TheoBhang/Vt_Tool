@@ -3,18 +3,15 @@ import { Chip } from "@mui/material";
 import { health } from "../../api/endpoints";
 
 export default function ApiHealthIndicator() {
-  const { isSuccess } = useQuery({
+  const { isPending, isSuccess } = useQuery({
     queryKey: ["health"],
     queryFn: health,
     retry: false,
     refetchInterval: 15000,
   });
 
-  return (
-    <Chip
-      label={isSuccess ? "API: online" : "API: offline"}
-      color={isSuccess ? "success" : "error"}
-      size="small"
-    />
-  );
+  const label = isPending ? "API: checking…" : isSuccess ? "API: online" : "API: offline";
+  const color = isPending ? "default" : isSuccess ? "success" : "error";
+
+  return <Chip label={label} color={color} size="small" />;
 }

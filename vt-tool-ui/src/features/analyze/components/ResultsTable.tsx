@@ -33,8 +33,8 @@ export default function ResultsTable({ rows }: { rows: ResultRow[] }) {
         </TableRow>
       </TableHead>
       <TableBody>
-        {rows.map((row) => (
-          <TableRow key={row.value}>
+        {rows.map((row, index) => (
+          <TableRow key={`${row.value}-${index}`}>
             <TableCell>{row.value}</TableCell>
             <TableCell>
               <StatusBadge verdict={computeVerdict(row.report)} />

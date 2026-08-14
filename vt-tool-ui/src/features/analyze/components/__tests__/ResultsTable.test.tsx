@@ -20,4 +20,19 @@ describe("ResultsTable", () => {
     const links = screen.getAllByRole("link", { name: /view on virustotal/i });
     expect(links[0]).toHaveAttribute("href", "https://www.virustotal.com/gui/search/8.8.8.8");
   });
+
+  it("renders a row per result even when the same IOC value repeats", () => {
+    render(
+      <ResultsTable
+        rows={[
+          { value: "8.8.8.8", report: { malicious_score: 0, total_scans: 90 } },
+          { value: "8.8.8.8", report: { malicious_score: 6, total_scans: 90 } },
+        ]}
+      />,
+    );
+
+    expect(screen.getAllByText("8.8.8.8")).toHaveLength(2);
+    expect(screen.getByText("CLEAN")).toBeInTheDocument();
+    expect(screen.getByText("MALICIOUS")).toBeInTheDocument();
+  });
 });

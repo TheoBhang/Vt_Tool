@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import AnalyzePage from "../AnalyzePage";
 import * as endpoints from "../../api/endpoints";
 import { setApiKey } from "../../shared/lib/apiKeyStorage";
@@ -10,7 +11,9 @@ function renderPage() {
   const client = new QueryClient();
   return render(
     <QueryClientProvider client={client}>
-      <AnalyzePage />
+      <MemoryRouter>
+        <AnalyzePage />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -73,5 +76,13 @@ describe("AnalyzePage", () => {
 
     await waitFor(() => expect(screen.getByText("CLEAN")).toBeInTheDocument());
     expect(screen.getByText("bad value")).toBeInTheDocument();
+  });
+
+  it("shows a warning banner linking to Settings when no API key is stored", () => {
+    localStorage.clear();
+    renderPage();
+
+    expect(screen.getByText(/no virustotal api key set/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /add one in settings/i })).toHaveAttribute("href", "/settings");
   });
 });

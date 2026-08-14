@@ -21,4 +21,10 @@ describe("ApiHealthIndicator", () => {
     renderWithClient(<ApiHealthIndicator />);
     await waitFor(() => expect(screen.getByText(/offline/i)).toBeInTheDocument());
   });
+
+  it("shows a neutral checking state before the first health check resolves", () => {
+    vi.spyOn(endpoints, "health").mockReturnValue(new Promise(() => {}));
+    renderWithClient(<ApiHealthIndicator />);
+    expect(screen.getByText(/checking/i)).toBeInTheDocument();
+  });
 });

@@ -21,7 +21,10 @@ export default function IocInput({ onParsed }: IocInputProps) {
     }
     const file = accepted[0];
     if (!file) return;
-    file.text().then((content) => setText((prev) => (prev ? `${prev}\n${content}` : content)));
+    file
+      .text()
+      .then((content) => setText((prev) => (prev ? `${prev}\n${content}` : content)))
+      .catch(() => setError("Could not read the dropped file."));
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
