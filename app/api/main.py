@@ -8,12 +8,15 @@ from arq.jobs import Job, JobStatus
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from pymisp import ExpandedPyMISP
 
 from app.DataHandler.validator import DataValidator
 from app.errors import ValidationError
+from app.MISP.vt_tools2misp import get_misp_event, submit_misp_objects
 from app.services.analysis_service import AnalysisService
 from app.services.cache_config import build_cache_service
 from app.services.history_service import HistoryService
+from app.services.misp_service import ATTRIBUTE_TYPE_MAPPING, MispService, OBJECT_NAME_BY_VALUE_TYPE
 from app.services.validation_service import ValidationService
 
 
@@ -148,3 +151,48 @@ async def get_analysis(analysis_id: str, request: Request):
     if result is None:
         raise HTTPException(status_code=404, detail="Analysis not found")
     return result
+
+
+class MispPushRequest(BaseModel):
+    case_id: str | None = None
+
+
+@app.post("/analyses/{analysis_id}/misp-push")
+async def push_analysis_to_misp(analysis_id: str, payload: MispPushRequest, request: Request):
+    history: HistoryService = request.app.state.history
+    analysis = history.get(analysis_id)
+    if analysis is None:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+
+    misp_url = os.getenv("MISPURL")
+    misp_key = os.getenv("MISPKEY")
+    if not misp_url or not misp_key:
+        raise HTTPException(status_code=503, detail="MISP is not configured (MISPURL/MISPKEY unset)")
+
+    try:
+        misp = ExpandedPyMISP(misp_url, misp_key, False)
+        misp_event = get_misp_event(misp, payload.case_id or analysis_id)
+
+        misp_service = MispService()
+        misp_objects = []
+        skipped_count = 0
+        for item in analysis["items"]:
+            report = item.get("report")
+            object_name = OBJECT_NAME_BY_VALUE_TYPE.get(item["value_type"])
+            if not report or object_name is None:
+                skipped_count += 1
+                continue
+            attribute_mapping = {**ATTRIBUTE_TYPE_MAPPING[object_name], **ATTRIBUTE_TYPE_MAPPING["general"]}
+            misp_object = misp_service.create_object(report, object_name, attribute_mapping)
+            if misp_object is None:
+                skipped_count += 1
+                continue
+            misp_objects.append(misp_object)
+
+        submit_misp_objects(misp, misp_event, misp_objects)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"MISP push failed: {e}")
+
+    pushed_count = len(misp_objects)
+    history.set_misp_event_id(analysis_id, str(misp_event.id), payload.case_id)
+    return {"event_id": str(misp_event.id), "pushed_count": pushed_count, "skipped_count": skipped_count}

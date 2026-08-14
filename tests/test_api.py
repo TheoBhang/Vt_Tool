@@ -286,5 +286,70 @@ class HistoryEndpointTests(unittest.TestCase):
         self.assertEqual(response.status_code, 422)
 
 
+class MispPushEndpointTests(unittest.TestCase):
+    def setUp(self):
+        fd, self.history_db_path = tempfile.mkstemp(suffix=".sqlite")
+        os.close(fd)
+        os.remove(self.history_db_path)
+        app.state.history = HistoryService(self.history_db_path)
+        self.client = TestClient(app)
+        self.saved = self.client.post("/analyses", json={"items": [
+            {"value": "8.8.8.8", "value_type": "ips", "report": {"ip": "8.8.8.8", "malicious_score": 0}, "error": None},
+            {"value": "example.com", "value_type": "domains", "report": None, "error": "Wrong API key"},
+        ]}).json()
+
+    def tearDown(self):
+        app.state.history.close()
+        if os.path.exists(self.history_db_path):
+            os.remove(self.history_db_path)
+
+    def test_returns_503_when_misp_is_not_configured(self):
+        with mock.patch.dict(os.environ, {"MISPURL": "", "MISPKEY": ""}, clear=False):
+            response = self.client.post(f"/analyses/{self.saved['id']}/misp-push", json={})
+        self.assertEqual(response.status_code, 503)
+
+    def test_returns_404_when_analysis_does_not_exist(self):
+        with mock.patch.dict(os.environ, {"MISPURL": "https://misp.example", "MISPKEY": "key"}):
+            response = self.client.post("/analyses/does-not-exist/misp-push", json={})
+        self.assertEqual(response.status_code, 404)
+
+    def test_pushes_the_valid_item_and_skips_the_one_with_no_report(self):
+        fake_event = mock.Mock(id="42")
+        with mock.patch.dict(os.environ, {"MISPURL": "https://misp.example", "MISPKEY": "key"}), \
+             mock.patch("app.api.main.ExpandedPyMISP") as mock_misp_cls, \
+             mock.patch("app.api.main.get_misp_event", return_value=fake_event) as mock_get_event, \
+             mock.patch("app.api.main.submit_misp_objects") as mock_submit:
+            response = self.client.post(f"/analyses/{self.saved['id']}/misp-push", json={"case_id": "incident-1"})
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["event_id"], "42")
+        self.assertEqual(body["pushed_count"], 1)
+        self.assertEqual(body["skipped_count"], 1)
+        mock_misp_cls.assert_called_once_with("https://misp.example", "key", False)
+        mock_get_event.assert_called_once()
+        mock_submit.assert_called_once()
+        # submit_misp_objects's 3rd positional arg is the list of built MISPObjects - exactly 1 (the skipped item never got one built).
+        self.assertEqual(len(mock_submit.call_args.args[2]), 1)
+
+    def test_a_successful_push_records_the_event_id_and_case_label_in_history(self):
+        fake_event = mock.Mock(id="42")
+        with mock.patch.dict(os.environ, {"MISPURL": "https://misp.example", "MISPKEY": "key"}), \
+             mock.patch("app.api.main.ExpandedPyMISP"), \
+             mock.patch("app.api.main.get_misp_event", return_value=fake_event), \
+             mock.patch("app.api.main.submit_misp_objects"):
+            self.client.post(f"/analyses/{self.saved['id']}/misp-push", json={"case_id": "incident-1"})
+
+        detail = self.client.get(f"/analyses/{self.saved['id']}").json()
+        self.assertEqual(detail["misp_event_id"], "42")
+        self.assertEqual(detail["case_label"], "incident-1")
+
+    def test_returns_502_when_misp_connection_fails(self):
+        with mock.patch.dict(os.environ, {"MISPURL": "https://misp.example", "MISPKEY": "key"}), \
+             mock.patch("app.api.main.ExpandedPyMISP", side_effect=Exception("connection refused")):
+            response = self.client.post(f"/analyses/{self.saved['id']}/misp-push", json={})
+        self.assertEqual(response.status_code, 502)
+
+
 if __name__ == "__main__":
     unittest.main()
