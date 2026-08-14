@@ -64,6 +64,29 @@ class MispServiceTests(unittest.TestCase):
         objects = service.objects_from_csv([{"a": "b"}], "bogus-type", {})
         self.assertEqual(objects, [])
 
+    def test_object_name_by_value_type_covers_all_four_types(self):
+        from app.services.misp_service import OBJECT_NAME_BY_VALUE_TYPE
+        self.assertEqual(OBJECT_NAME_BY_VALUE_TYPE, {
+            "ips": "ip-port",
+            "domains": "domain-ip",
+            "urls": "url",
+            "hashes": "file",
+        })
+
+    def test_attribute_type_mapping_covers_every_object_name_plus_general(self):
+        from app.services.misp_service import ATTRIBUTE_TYPE_MAPPING, OBJECT_NAME_BY_VALUE_TYPE
+        for object_name in OBJECT_NAME_BY_VALUE_TYPE.values():
+            self.assertIn(object_name, ATTRIBUTE_TYPE_MAPPING)
+        self.assertIn("general", ATTRIBUTE_TYPE_MAPPING)
+        self.assertIn("malicious_score", ATTRIBUTE_TYPE_MAPPING["general"])
+        self.assertIn("link", ATTRIBUTE_TYPE_MAPPING["general"])
+
+    def test_attribute_type_mapping_file_entry_matches_hash_report_fields(self):
+        from app.services.misp_service import ATTRIBUTE_TYPE_MAPPING
+        file_mapping = ATTRIBUTE_TYPE_MAPPING["file"]
+        self.assertEqual(file_mapping["sha256"], ("sha256", "sha256", "Payload delivery", False))
+        self.assertEqual(file_mapping["meaningful_name"], ("filename", "text", "Payload delivery", False))
+
 
 if __name__ == "__main__":
     unittest.main()

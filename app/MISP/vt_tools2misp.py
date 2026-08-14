@@ -8,7 +8,7 @@ from pymisp import ExpandedPyMISP, MISPEvent
 from rich.console import Console
 from rich.prompt import Prompt
 
-from app.services.misp_service import MispService
+from app.services.misp_service import ATTRIBUTE_TYPE_MAPPING, MispService
 
 console = Console()
 
@@ -174,60 +174,7 @@ def process_and_submit_to_misp(misp, case_str, csv_files_created, template_file,
 
     console.print("[bold]Processing CSV files and submitting data to MISP...[/bold]")
 
-    attribute_type_mapping = {
-        "file": {
-            "sha256": ("sha256", "sha256", "Payload delivery", False),
-            "sha1": ("sha1", "sha1", "Payload delivery", False),
-            "md5": ("md5", "md5", "Payload delivery", False),
-            "ssdeep": ("ssdeep", "ssdeep", "Payload delivery", False),
-            "tlsh": ("tlsh", "tlsh", "Payload delivery", False),
-            "size": ("size", "size-in-bytes", "Payload delivery", False),
-            "meaningful_name": ("filename", "text", "Payload delivery", False),
-        },
-        "domain-ip": {
-            "domain": ("domain", "domain", "Network activity", False),
-            "ip": ("ip", "ip-dst", "Network activity", False),
-            "port": ("port", "port", "Network activity", False),
-            "protocol": ("protocol", "text", "Network activity", False),
-            "creation_date": ("creation_date", "datetime", "Network activity", False),
-            "reputation": ("reputation", "text", "External analysis", False),
-            "whois": ("whois", "text", "External analysis", False),
-            "info": ("info", "text", "Other", False),
-        },
-        "url": {
-            "url": ("url", "url", "Network activity", False),
-            "domain": ("domain", "domain", "Network activity", False),
-            "ip": ("ip", "ip-dst", "Network activity", False),
-            "port": ("port", "port", "Network activity", False),
-            "protocol": ("protocol", "text", "Network activity", False),
-            "fragment": ("fragment", "text", "Other", False),
-            "resource_path": ("resource_path", "text", "Network activity", False),
-            "query_params": ("query_params", "text", "Other", False),
-            "query_strings": ("query_strings", "text", "Other", False),
-            "tld": ("tld", "text", "Other", False),
-            "subdomain": ("subdomain", "text", "Other", False),
-            "scheme": ("scheme", "text", "Other", False),
-            "title": ("title", "text", "Other", False),
-            "final_url": ("final_url", "url", "Network activity", False),
-            "first_scan": ("first_scan", "datetime", "Other", False),
-            "info": ("info", "text", "Other", False),
-        },
-        "ip-port": {
-            "ip": ("ip", "ip-dst", "Network activity", False),
-            "port": ("port", "port", "Network activity", False),
-            "protocol": ("protocol", "text", "Network activity", False),
-            "owner": ("owner", "text", "Other", False),
-            "location": ("country-code", "text", "Network activity", False),
-            "network": ("network", "text", "Other", False),
-            "https_certificate": ("https_certificate", "text", "External analysis", False),
-            "regional_internet_registry": ("regional_internet_registry", "text", "External analysis", False),
-            "asn": ("AS", "AS", "Network activity", False),
-        },
-        "general": {
-            "malicious_score": ("malicious_score", "text", "Antivirus detection", False),
-            "link": ("link", "link", "External analysis", False),
-        }
-    }
+    attribute_type_mapping = ATTRIBUTE_TYPE_MAPPING
 
     for csv_file in csv_files_created:
         console.print(f"[bold]Processing CSV file: {csv_file}[/bold]")
