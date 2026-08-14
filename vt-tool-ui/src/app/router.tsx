@@ -3,6 +3,7 @@ import { AppBar, Box, Link, Toolbar, Typography } from "@mui/material";
 import AnalyzePage from "../pages/AnalyzePage";
 import SettingsPage from "../pages/SettingsPage";
 import HistoryPage from "../pages/HistoryPage";
+import AnalysisDetailPage from "../pages/AnalysisDetailPage";
 import ApiHealthIndicator from "../shared/components/ApiHealthIndicator";
 
 export function AppRouter() {
@@ -29,6 +30,7 @@ export function AppRouter() {
         <Routes>
           <Route path="/" element={<AnalyzePage />} />
           <Route path="/history" element={<HistoryPage />} />
+          <Route path="/history/:id" element={<AnalysisDetailPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </Box>
