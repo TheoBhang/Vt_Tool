@@ -2,6 +2,7 @@ import { Link as RouterLink, Route, Routes } from "react-router-dom";
 import { AppBar, Box, Link, Toolbar, Typography } from "@mui/material";
 import AnalyzePage from "../pages/AnalyzePage";
 import SettingsPage from "../pages/SettingsPage";
+import HistoryPage from "../pages/HistoryPage";
 import ApiHealthIndicator from "../shared/components/ApiHealthIndicator";
 
 export function AppRouter() {
@@ -15,6 +16,9 @@ export function AppRouter() {
           <Link component={RouterLink} to="/" color="inherit">
             Analyze
           </Link>
+          <Link component={RouterLink} to="/history" color="inherit">
+            History
+          </Link>
           <Link component={RouterLink} to="/settings" color="inherit">
             Settings
           </Link>
@@ -24,6 +28,7 @@ export function AppRouter() {
       <Box sx={{ p: 3 }}>
         <Routes>
           <Route path="/" element={<AnalyzePage />} />
+          <Route path="/history" element={<HistoryPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </Box>
