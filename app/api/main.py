@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
     app.state.redis = await create_pool(
         RedisSettings.from_dsn(os.getenv("REDIS_URL", "redis://localhost:6379"))
     )
-    app.state.history = HistoryService("vttools.sqlite")
+    app.state.history = HistoryService(os.getenv("VT_HISTORY_DB_PATH", "vttools.sqlite"))
     yield
     app.state.analysis.cache.backend.close()
     app.state.history.close()
@@ -153,6 +153,20 @@ async def get_analysis(analysis_id: str, request: Request):
     return result
 
 
+def _flatten_report_for_misp(report: dict) -> dict:
+    """ATTRIBUTE_TYPE_MAPPING's keys are flat CSV column names, but
+    VirusTotalService's report dicts nest some fields under sub-dicts
+    (IP reports: info-ip.regional_internet_registry / info-ip.asn) that would
+    otherwise never match any mapping entry and get silently dropped. Other
+    dict-valued fields (info, https_certificate) have no per-subfield mapping
+    at all, so they're excluded rather than passed through as a stringified
+    dict. Builds a new dict - never mutates the report stored in history.
+    """
+    flattened = {k: v for k, v in report.items() if not isinstance(v, dict)}
+    flattened.update(report.get("info-ip", {}))
+    return flattened
+
+
 class MispPushRequest(BaseModel):
     case_id: str | None = None
 
@@ -183,16 +197,16 @@ async def push_analysis_to_misp(analysis_id: str, payload: MispPushRequest, requ
                 skipped_count += 1
                 continue
             attribute_mapping = {**ATTRIBUTE_TYPE_MAPPING[object_name], **ATTRIBUTE_TYPE_MAPPING["general"]}
-            misp_object = misp_service.create_object(report, object_name, attribute_mapping)
+            misp_object = misp_service.create_object(_flatten_report_for_misp(report), object_name, attribute_mapping)
             if misp_object is None:
                 skipped_count += 1
                 continue
             misp_objects.append(misp_object)
 
-        submit_misp_objects(misp, misp_event, misp_objects)
+        pushed_count = submit_misp_objects(misp, misp_event, misp_objects)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"MISP push failed: {e}")
 
-    pushed_count = len(misp_objects)
+    skipped_count += len(misp_objects) - pushed_count
     history.set_misp_event_id(analysis_id, str(misp_event.id), payload.case_id)
     return {"event_id": str(misp_event.id), "pushed_count": pushed_count, "skipped_count": skipped_count}

@@ -105,6 +105,8 @@ Not used by any service in this stack today — kept for a future reverse-proxy/
 
 This stack does not run a local MISP instance. vt_tool's MISP-submission feature (`vt_tools.py`'s template-file workflow, implemented in `app/MISP/vt_tools2misp.py`) is configured independently of this deployment: set `MISPURL`, `MISPKEY`, and `MISPSSLVERIFY` in the repository's root-level `.env` file (see the root `.env.example`), pointed at whichever MISP instance you actually run. This deployment stack has no opinion about where that instance lives.
 
+The deployed `vt-tool-api` container (and, via it, the UI's History page "Push to MISP" button) reads `MISPURL`/`MISPKEY` from **this directory's** `.env` (`deployment/.env`, loaded via `env_file` in `compose_apps.yaml`) - not the CLI's root `.env` above, which `vt-tool-api` never sees. See `deployment/.env.example` for the entries. If either is unset, the push endpoint returns `503` ("MISP is not configured") rather than failing at startup - this is the expected, safe default for a deployment with no MISP push configured, not a bug.
+
 ## Project Structure
 
 ```txt

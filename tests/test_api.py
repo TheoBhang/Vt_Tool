@@ -327,7 +327,7 @@ class MispPushEndpointTests(unittest.TestCase):
         with mock.patch.dict(os.environ, {"MISPURL": "https://misp.example", "MISPKEY": "key"}), \
              mock.patch("app.api.main.ExpandedPyMISP") as mock_misp_cls, \
              mock.patch("app.api.main.get_misp_event", return_value=fake_event) as mock_get_event, \
-             mock.patch("app.api.main.submit_misp_objects") as mock_submit:
+             mock.patch("app.api.main.submit_misp_objects", return_value=2) as mock_submit:
             response = self.client.post(f"/analyses/{saved['id']}/misp-push", json={"case_id": "incident-1"})
 
         self.assertEqual(response.status_code, 200)
@@ -349,12 +349,65 @@ class MispPushEndpointTests(unittest.TestCase):
         with mock.patch.dict(os.environ, {"MISPURL": "https://misp.example", "MISPKEY": "key"}), \
              mock.patch("app.api.main.ExpandedPyMISP"), \
              mock.patch("app.api.main.get_misp_event", return_value=fake_event), \
-             mock.patch("app.api.main.submit_misp_objects"):
+             mock.patch("app.api.main.submit_misp_objects", return_value=1):
             self.client.post(f"/analyses/{self.saved['id']}/misp-push", json={"case_id": "incident-1"})
 
         detail = self.client.get(f"/analyses/{self.saved['id']}").json()
         self.assertEqual(detail["misp_event_id"], "42")
         self.assertEqual(detail["case_label"], "incident-1")
+
+    def test_flattens_nested_info_ip_fields_before_building_the_misp_object(self):
+        # A realistic full IP report shape, as VirusTotalService._populate_ip
+        # actually produces it: asn/regional_internet_registry live under
+        # info-ip, and https_certificate is a nested dict. Both used to be
+        # silently dropped or stringified rather than mapped to attributes.
+        saved = self.client.post("/analyses", json={"items": [
+            {
+                "value": "8.8.8.8",
+                "value_type": "ips",
+                "report": {
+                    "ip": "8.8.8.8",
+                    "port": "Not found",
+                    "protocol": "Not found",
+                    "owner": "GOOGLE",
+                    "location": "North America / US",
+                    "network": "8.8.8.0/24",
+                    "https_certificate": {"subject": "CN=example"},
+                    "info-ip": {
+                        "regional_internet_registry": "ARIN",
+                        "asn": 15169,
+                    },
+                    "malicious_score": 0,
+                    "link": "https://virustotal.com/gui/ip-address/8.8.8.8",
+                },
+                "error": None,
+            },
+        ]}).json()
+
+        fake_event = mock.Mock(id="42")
+        with mock.patch.dict(os.environ, {"MISPURL": "https://misp.example", "MISPKEY": "key"}), \
+             mock.patch("app.api.main.ExpandedPyMISP"), \
+             mock.patch("app.api.main.get_misp_event", return_value=fake_event), \
+             mock.patch("app.api.main.submit_misp_objects", return_value=1) as mock_submit:
+            response = self.client.post(f"/analyses/{saved['id']}/misp-push", json={})
+
+        self.assertEqual(response.status_code, 200)
+        misp_objects = mock_submit.call_args.args[2]
+        self.assertEqual(len(misp_objects), 1)
+        built_object = misp_objects[0]
+
+        as_attributes = [a for a in built_object.attributes if a.type == "AS"]
+        self.assertEqual(len(as_attributes), 1)
+        self.assertEqual(as_attributes[0].value, 15169)
+
+        rir_attributes = [a for a in built_object.attributes if a.object_relation == "regional_internet_registry"]
+        self.assertEqual(len(rir_attributes), 1)
+        self.assertEqual(rir_attributes[0].value, "ARIN")
+
+        # https_certificate is a dict with no per-subfield mapping - it must
+        # not end up as a single stringified-dict attribute.
+        cert_attributes = [a for a in built_object.attributes if a.object_relation == "https_certificate"]
+        self.assertEqual(cert_attributes, [])
 
     def test_returns_502_when_misp_connection_fails(self):
         with mock.patch.dict(os.environ, {"MISPURL": "https://misp.example", "MISPKEY": "key"}), \

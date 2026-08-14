@@ -29,8 +29,12 @@ def get_misp_event(misp: ExpandedPyMISP, case_str: str) -> MISPEvent:
         MISPEvent: The MISP event associated with the case.
     """
     try:
-        # Attempt to get the event by case_str
+        # Attempt to get the event by case_str. pymisp's get_event() does NOT
+        # raise on a 404/4xx - it returns {'errors': (404, ...)}, so a missing
+        # event has to be detected explicitly here rather than via except.
         event = misp.get_event(case_str)
+        if not isinstance(event, dict) or 'errors' in event:
+            raise ValueError(f"MISP has no event for {case_str}")
         console.print(f"[bold green]Successfully fetched MISP event: {case_str}[/bold green]")
 
     except Exception as e:
@@ -40,7 +44,7 @@ def get_misp_event(misp: ExpandedPyMISP, case_str: str) -> MISPEvent:
         console.print("[bold yellow]Creating a new MISP event...[/bold yellow]")
 
         # Create a new MISP event
-        event = misp.new_event(info="VirusTotal Report")
+        event = misp.new_event(info=f"VirusTotal Report - {case_str}")
 
     # Load and return the event into MISPEvent object
     try:
@@ -208,16 +212,22 @@ def process_and_submit_to_misp(misp, case_str, csv_files_created, template_file,
     console.print("[bold green]All CSV files processed and submitted successfully![/bold green]")
 
 
-def submit_misp_objects(misp, misp_event, misp_objects) -> None:
+def submit_misp_objects(misp, misp_event, misp_objects) -> int:
     """
     Submit a list of MISP objects to a MISP event.
+
+    Returns the number of objects MISP actually accepted (i.e. add_object()
+    did not raise) - not the number attempted. Objects with no attributes are
+    skipped and don't count; a failed add_object() is logged and doesn't
+    count either.
     """
     if not misp_objects:
         console.print("[bold yellow]No MISP objects to submit.[/bold yellow]")
-        return
+        return 0
 
     console.print(f"[bold]Submitting {len(misp_objects)} MISP objects to event {misp_event.id}...[/bold]")
 
+    added_count = 0
     for misp_object in misp_objects:
         if not misp_object.attributes:
             console.print(f"[bold yellow]Warning: MISP object '{misp_object.name}' has no attributes.[/bold yellow]")
@@ -230,6 +240,7 @@ def submit_misp_objects(misp, misp_event, misp_objects) -> None:
             for attr in misp_object.attributes:
                 attr.uuid = None
             misp.add_object(misp_event.id, misp_object)
+            added_count += 1
             console.print(f"[bold green]Successfully added MISP object {misp_object.name}[/bold green]")
         except Exception as e:
             console.print(f"[bold red]Failed to add MISP object {misp_object.name}: {e}[/bold red]")
@@ -246,6 +257,8 @@ def submit_misp_objects(misp, misp_event, misp_objects) -> None:
     except Exception as e:
         console.print(f"[bold red]Failed to update MISP event: {e}[/bold red]")
         logging.error(f"Failed to update MISP event: {e}")
+
+    return added_count
 
 
 

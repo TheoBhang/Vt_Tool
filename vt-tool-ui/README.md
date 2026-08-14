@@ -39,6 +39,19 @@ Entered on the Settings page (`/settings`) and stored only in the browser's
 `localStorage` — never sent anywhere except as the `api_key` field on each
 `/analyze` request, and never defaulted server-side.
 
+## History and MISP push
+
+The History page (`/history`) lists past analyses saved via `POST
+/analyses` and lets you drill into one (`GET /analyses/{id}`). From there,
+"Push to MISP" (`POST /analyses/{id}/misp-push`) submits the saved reports
+as MISP objects to an existing or newly-created event.
+
+This requires the backend to have `MISPURL`/`MISPKEY` configured (see
+[`deployment/README.md`](../deployment/README.md#misp-integration) for the
+Docker deployment, or the root `.env.example` for local/bare runs) — if
+unset, the backend returns a 503 and the push button shows that error
+inline rather than succeeding.
+
 ## Testing
 
 ```bash

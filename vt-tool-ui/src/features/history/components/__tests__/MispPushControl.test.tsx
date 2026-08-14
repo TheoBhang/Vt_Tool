@@ -36,7 +36,16 @@ describe("MispPushControl", () => {
   });
 
   it("shows an inline error when the push fails", async () => {
-    vi.spyOn(endpoints, "pushToMisp").mockRejectedValue(new Error("MISP push failed: connection refused"));
+    // pushToMisp() calls through the shared axios client, whose response
+    // interceptor (see client.test.ts) rewrites error.message to the
+    // server's `detail` field before the rejection ever reaches a caller -
+    // so by the time it's here, it's an axios-error-shaped object with a
+    // `response.data.detail` and a message already equal to it, not a
+    // hand-made Error with an arbitrary message.
+    const axiosShapedError = Object.assign(new Error("MISP push failed: connection refused"), {
+      response: { data: { detail: "MISP push failed: connection refused" } },
+    });
+    vi.spyOn(endpoints, "pushToMisp").mockRejectedValue(axiosShapedError);
     renderWithClient(<MispPushControl analysisId="abc123" mispEventId={null} />);
 
     await userEvent.click(screen.getByRole("button", { name: /push to misp/i }));
