@@ -1,0 +1,258 @@
+import unittest
+from unittest import mock
+
+import vt_tools
+from app import errors as errors_module
+
+
+class CountIocsTests(unittest.TestCase):
+    def test_sums_list_lengths(self):
+        self.assertEqual(
+            vt_tools.count_iocs({"ips": ["a", "b"], "domains": ["c"]}), 3
+        )
+
+    def test_rejects_non_dict(self):
+        with self.assertRaises(TypeError):
+            vt_tools.count_iocs(["not", "a", "dict"])
+
+
+class ExtractTableDataTests(unittest.TestCase):
+    def test_headers_are_the_union_of_all_results(self):
+        results = [
+            {"ip": "8.8.8.8", "malicious_score": 0},
+            {"ip": "1.1.1.1", "malicious_score": 5, "extra": "x"},
+        ]
+        headers, rows = vt_tools.extract_table_data(results)
+        self.assertEqual(set(headers), {"ip", "malicious_score", "extra"})
+
+    def test_rows_are_fully_populated_with_final_headers(self):
+        results = [
+            {"ip": "8.8.8.8", "malicious_score": 0},
+            {"ip": "1.1.1.1", "malicious_score": 5, "extra": "x"},
+        ]
+        headers, rows = vt_tools.extract_table_data(results)
+        self.assertEqual(len(rows[0]), len(headers))
+        self.assertEqual(len(rows[1]), len(headers))
+        row0 = dict(zip(headers, rows[0]))
+        row1 = dict(zip(headers, rows[1]))
+        self.assertEqual(row0["ip"], "8.8.8.8")
+        self.assertEqual(row0["extra"], "")
+        self.assertEqual(row1["extra"], "x")
+
+
+class GetRemainingQuotaTests(unittest.TestCase):
+    def test_computes_remaining_from_allowed_and_used(self):
+        class FakeResponse:
+            status_code = 200
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"data": {"api_requests_hourly": {"user": {"allowed": 500, "used": 120}}}}
+
+        class FakeSession:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc_info):
+                return False
+
+            def __init__(self):
+                self.proxies = {}
+
+            def get(self, url, headers=None, verify=None):
+                return FakeResponse()
+
+        with mock.patch("vt_tools.requests.Session", return_value=FakeSession()):
+            self.assertEqual(vt_tools.get_remaining_quota("key", None, None), 380)
+
+    def test_returns_zero_on_malformed_json_body(self):
+        # Regression test: a 200 response with an unexpected body (HTML from
+        # a proxy/WAF, or a VT API schema change dropping a key) used to
+        # propagate a raw JSONDecodeError/KeyError uncaught, aborting the
+        # whole run instead of the graceful "Error retrieving VT Quota"
+        # message the RequestException branch already provides.
+        class FakeResponse:
+            status_code = 200
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"unexpected": "shape"}
+
+        class FakeSession:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc_info):
+                return False
+
+            def __init__(self):
+                self.proxies = {}
+
+            def get(self, url, headers=None, verify=None):
+                return FakeResponse()
+
+        with mock.patch("vt_tools.requests.Session", return_value=FakeSession()):
+            self.assertEqual(vt_tools.get_remaining_quota("key", None, None), 0)
+
+    def test_returns_zero_on_request_exception(self):
+        import requests
+
+        class FailingSession:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc_info):
+                return False
+
+            def __init__(self):
+                self.proxies = {}
+
+            def get(self, url, headers=None, verify=None):
+                raise requests.exceptions.RequestException("network down")
+
+        with mock.patch("vt_tools.requests.Session", return_value=FailingSession()):
+            self.assertEqual(vt_tools.get_remaining_quota("key", None, None), 0)
+
+    def test_defaults_to_verifying_ssl(self):
+        seen = {}
+
+        class RecordingSession:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc_info):
+                return False
+
+            def __init__(self):
+                self.proxies = {}
+
+            def get(self, url, headers=None, verify=None):
+                seen["verify"] = verify
+
+                class Resp:
+                    status_code = 200
+
+                    def raise_for_status(self):
+                        pass
+
+                    def json(self):
+                        return {"data": {"api_requests_hourly": {"user": {"allowed": 1, "used": 0}}}}
+
+                return Resp()
+
+        with mock.patch("vt_tools.requests.Session", return_value=RecordingSession()):
+            vt_tools.get_remaining_quota("key", None, None)
+        self.assertTrue(seen["verify"])
+
+    def test_passes_verify_ssl_false_through_to_the_request(self):
+        seen = {}
+
+        class RecordingSession:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc_info):
+                return False
+
+            def __init__(self):
+                self.proxies = {}
+
+            def get(self, url, headers=None, verify=None):
+                seen["verify"] = verify
+
+                class Resp:
+                    status_code = 200
+
+                    def raise_for_status(self):
+                        pass
+
+                    def json(self):
+                        return {"data": {"api_requests_hourly": {"user": {"allowed": 1, "used": 0}}}}
+
+                return Resp()
+
+        with mock.patch("vt_tools.requests.Session", return_value=RecordingSession()):
+            vt_tools.get_remaining_quota("key", None, None, verify_ssl=False)
+        self.assertFalse(seen["verify"])
+
+
+class AnalyzeSingleValueTests(unittest.TestCase):
+    def test_cache_hit_reports_one_skipped_value(self):
+        init = mock.Mock()
+        init.analysis.analyze.return_value = ({"malicious_score": 1}, True)
+        results, skipped, errors = vt_tools.analyze_single_value(init, "domains", "example.com")
+        self.assertEqual(results, [{"malicious_score": 1}])
+        self.assertEqual(skipped, 1)
+        self.assertEqual(errors, 0)
+
+    def test_cache_miss_reports_zero_skipped(self):
+        init = mock.Mock()
+        init.analysis.analyze.return_value = ({"malicious_score": 9}, False)
+        results, skipped, errors = vt_tools.analyze_single_value(init, "domains", "example.com")
+        self.assertEqual(results, [{"malicious_score": 9}])
+        self.assertEqual(skipped, 0)
+        self.assertEqual(errors, 0)
+
+    def test_validation_error_counts_as_one_error_no_results(self):
+        init = mock.Mock()
+        init.analysis.analyze.side_effect = errors_module.ValidationError("invalid")
+        results, skipped, errs = vt_tools.analyze_single_value(init, "domains", "not-a-domain")
+        self.assertEqual(results, [])
+        self.assertEqual(skipped, 0)
+        self.assertEqual(errs, 1)
+
+    def test_virustotal_api_error_counts_as_one_error_no_results(self):
+        init = mock.Mock()
+        init.analysis.analyze.side_effect = errors_module.VirusTotalAPIError("network down")
+        results, skipped, errs = vt_tools.analyze_single_value(init, "domains", "example.com")
+        self.assertEqual(results, [])
+        self.assertEqual(skipped, 0)
+        self.assertEqual(errs, 1)
+
+    def test_unexpected_exception_counts_as_one_error_no_results(self):
+        init = mock.Mock()
+        init.analysis.analyze.side_effect = IndexError("list index out of range")
+        results, skipped, errs = vt_tools.analyze_single_value(init, "hashes", "deadbeef")
+        self.assertEqual(results, [])
+        self.assertEqual(skipped, 0)
+        self.assertEqual(errs, 1)
+
+
+class AnalyzeValueTypeTests(unittest.TestCase):
+    def test_stops_early_once_quota_is_exhausted_mid_run(self):
+        # Regression test: remaining_queries was never decremented inside
+        # the loop, so the `== 0` guard only ever fired when quota was
+        # already zero before this call started - a large batch would run
+        # to completion regardless of how little real quota was left.
+        init = mock.Mock()
+        init.analysis.analyze.return_value = ({"malicious_score": 0}, False)  # cache miss every time
+        values = ["a.com", "b.com", "c.com", "d.com"]
+
+        results, skipped, errors = vt_tools.analyze_value_type(init, "domains", values, remaining_queries=2)
+
+        self.assertEqual(init.analysis.analyze.call_count, 2)
+        self.assertEqual(len(results), 2)
+        self.assertEqual(skipped, 0)
+        self.assertEqual(errors, 0)
+
+    def test_cache_hits_do_not_consume_quota(self):
+        init = mock.Mock()
+        init.analysis.analyze.return_value = ({"malicious_score": 0}, True)  # cache hit every time
+        values = ["a.com", "b.com", "c.com"]
+
+        results, skipped, errors = vt_tools.analyze_value_type(init, "domains", values, remaining_queries=1)
+
+        # All 3 are cache hits, so 1 unit of real quota is never spent -
+        # every value gets processed despite remaining_queries starting at 1.
+        self.assertEqual(init.analysis.analyze.call_count, 3)
+        self.assertEqual(len(results), 3)
+        self.assertEqual(skipped, 3)
+        self.assertEqual(errors, 0)
+
+
+if __name__ == "__main__":
+    unittest.main()

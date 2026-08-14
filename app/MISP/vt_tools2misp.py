@@ -1,13 +1,14 @@
 import csv
 import logging
 import os
-import re
 import warnings
 from typing import List, Dict, Optional
-import datetime
-from pymisp import ExpandedPyMISP, MISPEvent, MISPObject
+
+from pymisp import ExpandedPyMISP, MISPEvent
 from rich.console import Console
 from rich.prompt import Prompt
+
+from app.services.misp_service import ATTRIBUTE_TYPE_MAPPING, MispService
 
 console = Console()
 
@@ -28,8 +29,12 @@ def get_misp_event(misp: ExpandedPyMISP, case_str: str) -> MISPEvent:
         MISPEvent: The MISP event associated with the case.
     """
     try:
-        # Attempt to get the event by case_str
+        # Attempt to get the event by case_str. pymisp's get_event() does NOT
+        # raise on a 404/4xx - it returns {'errors': (404, ...)}, so a missing
+        # event has to be detected explicitly here rather than via except.
         event = misp.get_event(case_str)
+        if not isinstance(event, dict) or 'errors' in event:
+            raise ValueError(f"MISP has no event for {case_str}")
         console.print(f"[bold green]Successfully fetched MISP event: {case_str}[/bold green]")
 
     except Exception as e:
@@ -39,7 +44,7 @@ def get_misp_event(misp: ExpandedPyMISP, case_str: str) -> MISPEvent:
         console.print("[bold yellow]Creating a new MISP event...[/bold yellow]")
 
         # Create a new MISP event
-        event = misp.new_event(info="VirusTotal Report")
+        event = misp.new_event(info=f"VirusTotal Report - {case_str}")
 
     # Load and return the event into MISPEvent object
     try:
@@ -86,38 +91,6 @@ def process_csv_file(csv_file: str) -> list:
 
     return data
 
-
-def get_attribute_mapping(headers: List[str], attribute_type_mapping: Dict[str, str]) -> Dict[str, str]:
-    """
-    Get the attribute mapping based on CSV headers and a provided attribute-to-type mapping.
-
-    Parameters:
-        headers (List[str]): A list of headers from the CSV.
-        attribute_type_mapping (Dict[str, str]): A dictionary mapping attribute names to types.
-
-    Returns:
-        Dict[str, str]: A dictionary where the keys are headers found in the CSV and
-                        the values are their corresponding attribute types.
-
-    Raises:
-        ValueError: If no valid attribute mappings are found in the headers.
-    """
-    attribute_mapping = {}
-
-    # Loop through headers and find matching attribute types
-    for header in headers:
-        if header in attribute_type_mapping:
-            attribute_mapping[header] = attribute_type_mapping[header]
-        else:
-            logging.warning(f"Header '{header}' not found in attribute_type_mapping.")
-
-    # Raise an error if no valid mappings were found
-    if not attribute_mapping:
-        raise ValueError("No valid attribute mappings were found based on the provided headers.")
-
-    logging.info(f"Successfully mapped {len(attribute_mapping)} attributes.")
-
-    return attribute_mapping
 
 
 def load_template(template_file: str) -> Dict[str, Dict[str, List[str]]]:
@@ -183,133 +156,7 @@ def apply_template_data(data: List[Dict[str, str]], template_object: Dict[str, D
                 row[key] = values[0] if len(values) == 1 else values  # Store as single value or list
 
 
-def create_misp_object(row: Dict[str, str], object_name: str, attribute_mapping: Dict[str, List[str]]) -> Optional[MISPObject]:
-    """
-    Create a MISP object from a data row.
 
-    Parameters:
-        row (Dict[str, str]): A dictionary representing a single row of CSV data.
-        object_name (str): The name of the MISP object to be created.
-        attribute_mapping (Dict[str, List[str]]): A dictionary mapping CSV headers to MISP attribute details.
-
-    Returns:
-        Optional[MISPObject]: The created MISP object, or None if failed.
-    """
-    try:
-        misp_object = MISPObject(name=object_name)
-        misp_object.comment = row.get("comment", "")
-
-        for key, value in row.items():
-            if key in attribute_mapping:
-                attr_details = attribute_mapping[key]
-
-                if len(attr_details) != 4:
-                    raise ValueError(f"Attribute mapping for '{key}' is incomplete (should contain 4 details).")
-
-                attribute_type, attr_type, category, to_ids = attr_details
-
-                # Skip known bad values
-                if value in ["Not found", "Not Found", "", None, "null"]:
-                    continue
-                if attr_type == "datetime":
-                    if value == "0":
-                        value = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-                misp_object.add_attribute(
-                    attribute_type,
-                    value=value,
-                    type=attr_type,
-                    category=category,
-                    to_ids=attribute_type in ["ip", "url", "sha256", "md5", "sha1", "ssdeep", "tlsh"],
-                    disable_correlation=not (attribute_type in ["ip", "url", "sha256", "md5", "sha1", "ssdeep", "tlsh"])
-                )
-
-        return misp_object
-
-    except Exception as e:
-        console.print(f"[bold red]Failed to create MISP object from row: {row}. Error: {e}[/bold red]")
-        return None
-
-
-def create_misp_objects_from_csv(
-    data: List[Dict[str, str]],
-    object_name: str,
-    attribute_mapping: Dict[str, List[str]],
-    template_file: Optional[str] = None,
-    template: Optional[str] = None
-) -> List[MISPObject]:
-    """
-    Create MISP objects from CSV data and attribute mapping.
-
-    Parameters:
-        data (List[Dict[str, str]]): List of dictionaries representing rows of CSV data.
-        object_name (str): The name of the MISP object to be created.
-        attribute_mapping (Dict[str, List[str]]): A dictionary mapping CSV headers to MISP attribute details.
-        template_file (Optional[str]): Path to the template CSV file.
-
-    Returns:
-        List[MISPObject]: A list of MISP objects created from the data.
-    """
-    misp_objects = []
-
-    # Define expected mapping keys
-    patterns = {
-        "file": "hash",
-        "url": "url",
-        "ip-port": "ip",
-        "domain-ip": "domain"
-    }
-
-    template_key = patterns.get(object_name)
-    if not template_key:
-        console.print(f"[bold red]Error: Unsupported object name '{object_name}'.[/bold red]")
-        return []
-
-    # Load and apply template data if a template file is provided
-    template_object = load_template(template_file) if template_file else {}
-    if template_object:
-        apply_template_data(data, template_object, template_key)
-
-    # Process each row to create MISP objects
-    for row_idx, row in enumerate(data):
-        misp_object = create_misp_object(row, object_name, attribute_mapping)
-        if misp_object:
-            misp_objects.append(misp_object)
-
-    if not misp_objects:
-        console.print("[bold yellow]Warning: No valid MISP objects were created.[/bold yellow]")
-
-    return misp_objects
-
-
-def identify_object_type(csv_file: str) -> str:
-    """
-    Get the MISP object name based on the CSV file name.
-
-    Parameters:
-        csv_file (str): The name of the CSV file.
-
-    Returns:
-        str: The MISP object name based on the CSV file name.
-
-    Raises:
-        ValueError: If the CSV file name does not match any known patterns.
-    """
-    # Define a list of patterns and corresponding object names
-    patterns = [
-        (r"Hash", "file"),
-        (r"URL", "url"),
-        (r"IP", "ip-port"),
-        (r"Domain", "domain-ip")
-    ]
-
-    # Search the CSV file name for each pattern
-    for pattern, misp_object_name in patterns:
-        if re.search(pattern, csv_file, re.IGNORECASE):
-            return misp_object_name
-
-    # If no matches found, raise an exception
-    raise ValueError(f"Unknown CSV file format: '{csv_file}'. Could not determine MISP object name.")
 
 
 def process_and_submit_to_misp(misp, case_str, csv_files_created, template_file, template) -> None:
@@ -321,9 +168,9 @@ def process_and_submit_to_misp(misp, case_str, csv_files_created, template_file,
         case_str (str): The case identifier string.
         csv_files_created (List[str]): List of CSV files that were created for submission.
     """
-    # Get or create MISP event
-    misp_event = get_misp_event(misp, case_str)
-    console.print(f"[bold]Using MISP event {misp_event.id} for submission[/bold]")
+    misp_service = MispService()
+    misp_event_obj = get_misp_event(misp, case_str)
+    console.print(f"[bold]Using MISP event {misp_event_obj.id} for submission[/bold]")
 
     if not csv_files_created:
         console.print("[bold red]No CSV files found for processing![/bold red]")
@@ -331,89 +178,33 @@ def process_and_submit_to_misp(misp, case_str, csv_files_created, template_file,
 
     console.print("[bold]Processing CSV files and submitting data to MISP...[/bold]")
 
-    # Attribute type mappings for different CSV structures
-    attribute_type_mapping = {
-        "file": {
-            "sha256": ("sha256", "sha256", "Payload delivery", False),
-            "sha1": ("sha1", "sha1", "Payload delivery", False),
-            "md5": ("md5", "md5", "Payload delivery", False),
-            "ssdeep": ("ssdeep", "ssdeep", "Payload delivery", False),
-            "tlsh": ("tlsh", "tlsh", "Payload delivery", False),
-            "size": ("size", "size-in-bytes", "Payload delivery", False),
-            "meaningful_name": ("filename", "text", "Payload delivery", False),
-        },
-        "domain-ip": {
-            "domain": ("domain", "domain", "Network activity", False),
-            "ip": ("ip", "ip-dst", "Network activity", False),
-            "port": ("port", "port", "Network activity", False),
-            "protocol": ("protocol", "text", "Network activity", False),
-            "creation_date": ("creation_date", "datetime", "Network activity", False),
-            "reputation": ("reputation", "text", "External analysis", False),
-            "whois": ("whois", "text", "External analysis", False),
-            "info": ("info", "text", "Other", False),
-        },
-        "url": {
-            "url": ("url", "url", "Network activity", False),
-            "domain": ("domain", "domain", "Network activity", False),
-            "ip": ("ip", "ip-dst", "Network activity", False),
-            "port": ("port", "port", "Network activity", False),
-            "protocol": ("protocol", "text", "Network activity", False),
-            "fragment": ("fragment", "text", "Other", False),
-            "resource_path": ("resource_path", "text", "Network activity", False),
-            "query_params": ("query_params", "text", "Other", False),
-            "query_strings": ("query_strings", "text", "Other", False),
-            "tld": ("tld", "text", "Other", False),
-            "subdomain": ("subdomain", "text", "Other", False),
-            "scheme": ("scheme", "text", "Other", False),
-            "title": ("title", "text", "Other", False),
-            "final_url": ("final_url", "url", "Network activity", False),
-            "first_scan": ("first_scan", "datetime", "Other", False),
-            "info": ("info", "text", "Other", False),
-        },
-        "ip-port": {
-            "ip": ("ip", "ip-dst", "Network activity", False),
-            "port": ("port", "port", "Network activity", False),
-            "protocol": ("protocol", "text", "Network activity", False),
-            "owner": ("owner", "text", "Other", False),
-            "location": ("country-code", "text", "Network activity", False),
-            "network": ("network", "text", "Other", False),
-            "https_certificate": ("https_certificate", "text", "External analysis", False),
-            "regional_internet_registry": ("regional_internet_registry", "text", "External analysis", False),
-            "asn": ("AS", "AS", "Network activity", False),
-        },
-        "general": {
-            "malicious_score": ("malicious_score", "text", "Antivirus detection", False),
-            "link": ("link", "link", "External analysis", False),
-        }
-    }
+    attribute_type_mapping = ATTRIBUTE_TYPE_MAPPING
 
-    # Iterate over each created CSV file and process it
     for csv_file in csv_files_created:
         console.print(f"[bold]Processing CSV file: {csv_file}[/bold]")
-
         try:
-            data = process_csv_file(csv_file)  # Process the CSV file and extract data
+            data = process_csv_file(csv_file)
             if not data:
                 console.print(f"[bold yellow]No data found in {csv_file}[/bold yellow]")
                 continue
 
-            object_type = identify_object_type(csv_file)
-            if not object_type:
-                console.print(f"[bold red]Unknown data format in {csv_file}, skipping...[/bold red]")
-                continue
-
+            object_type = misp_service.identify_object_type(csv_file)
             console.print(f"[bold green]Detected format: {object_type}[/bold green]")
 
-            # Map attributes based on object type
             attribute_mapping = attribute_type_mapping[object_type].copy()
             attribute_mapping.update(attribute_type_mapping["general"])
 
-            # Create MISP objects from the CSV data
-            misp_objects = create_misp_objects_from_csv(data, object_type, attribute_mapping, template_file, template)
+            template_object = load_template(template_file) if template_file else {}
+            template_key = {"file": "hash", "url": "url", "ip-port": "ip", "domain-ip": "domain"}.get(object_type)
 
-            # Submit objects to MISP event
-            submit_misp_objects(misp, misp_event, misp_objects)
-
+            misp_objects = misp_service.objects_from_csv(
+                data, object_type, attribute_mapping,
+                template_object=template_object, template_key=template_key,
+            )
+            submit_misp_objects(misp, misp_event_obj, misp_objects)
+        except ValueError as e:
+            console.print(f"[bold red]{e}, skipping...[/bold red]")
+            continue
         except Exception as e:
             console.print(f"[bold red]Failed to process CSV file '{csv_file}': {e}[/bold red]")
             continue
@@ -421,16 +212,22 @@ def process_and_submit_to_misp(misp, case_str, csv_files_created, template_file,
     console.print("[bold green]All CSV files processed and submitted successfully![/bold green]")
 
 
-def submit_misp_objects(misp, misp_event, misp_objects) -> None:
+def submit_misp_objects(misp, misp_event, misp_objects) -> int:
     """
     Submit a list of MISP objects to a MISP event.
+
+    Returns the number of objects MISP actually accepted (i.e. add_object()
+    did not raise) - not the number attempted. Objects with no attributes are
+    skipped and don't count; a failed add_object() is logged and doesn't
+    count either.
     """
     if not misp_objects:
         console.print("[bold yellow]No MISP objects to submit.[/bold yellow]")
-        return
+        return 0
 
     console.print(f"[bold]Submitting {len(misp_objects)} MISP objects to event {misp_event.id}...[/bold]")
 
+    added_count = 0
     for misp_object in misp_objects:
         if not misp_object.attributes:
             console.print(f"[bold yellow]Warning: MISP object '{misp_object.name}' has no attributes.[/bold yellow]")
@@ -443,6 +240,7 @@ def submit_misp_objects(misp, misp_event, misp_objects) -> None:
             for attr in misp_object.attributes:
                 attr.uuid = None
             misp.add_object(misp_event.id, misp_object)
+            added_count += 1
             console.print(f"[bold green]Successfully added MISP object {misp_object.name}[/bold green]")
         except Exception as e:
             console.print(f"[bold red]Failed to add MISP object {misp_object.name}: {e}[/bold red]")
@@ -459,6 +257,8 @@ def submit_misp_objects(misp, misp_event, misp_objects) -> None:
     except Exception as e:
         console.print(f"[bold red]Failed to update MISP event: {e}[/bold red]")
         logging.error(f"Failed to update MISP event: {e}")
+
+    return added_count
 
 
 
@@ -507,13 +307,15 @@ def misp_event(case_str, csvfilescreated, template_file, template) -> None:
         console.print("[bold red]Exiting...[/bold red]")
 
 
-def misp_choice_template(case_str, csvfilescreated, template_file, template):
+def misp_choice(case_str: str, csvfilescreated: list, template_file: Optional[str] = None, template: Optional[str] = None) -> None:
     """
     Ask the user if they want to send the results to MISP and proceed accordingly.
 
     Parameters:
         case_str: Case identifier for the MISP event.
         csvfilescreated: List of CSV files to be processed and submitted.
+        template_file: Template file used in template mode, if any.
+        template: Template structure used in template mode, if any.
     """
     try:
         # Prompt the user for a decision
@@ -531,7 +333,7 @@ def misp_choice_template(case_str, csvfilescreated, template_file, template):
                 case_str = Prompt.ask("[bold]Please enter the MISP event ID[/bold]")
 
             # Proceed with MISP processing and submission
-            misp_event(case_str, csvfilescreated, template_file,template)
+            misp_event(case_str, csvfilescreated, template_file, template)
 
         # Handle user choice for No
         elif choice in ["2", "n", "no"]:
@@ -540,49 +342,7 @@ def misp_choice_template(case_str, csvfilescreated, template_file, template):
         # Invalid input handling
         else:
             console.print("[bold red]Invalid choice. Please enter a valid option.[/bold red]")
-            misp_choice_template(case_str, csvfilescreated, template_file, template)  # Recursively prompt until valid input
-
-    except KeyboardInterrupt:
-        console.print("[bold red]Exiting...[/bold red]")  # Graceful exit on keyboard interrupt
-    except Exception as e:
-        console.print(f"[bold red]An error occurred: {e}[/bold red]")  # Catch unexpected errors
-        console.print("[bold red]Exiting...[/bold red]")
-
-
-def misp_choice(case_str: str, csvfilescreated: list) -> None:
-    """
-    Ask the user if they want to send the results to MISP and proceed accordingly.
-
-    Parameters:
-        case_str: Case identifier for the MISP event.
-        csvfilescreated: List of CSV files to be processed and submitted.
-    """
-    try:
-        # Prompt the user for a decision
-        console.print("[bold]Do you want to send the results to MISP?[/bold]")
-        console.print("- Yes (1, Y, yes)")
-        console.print("- No (2, N, no)")
-
-        # Get the user's input
-        choice = Prompt.ask("[bold]Enter your choice[/bold]").strip().lower()
-
-        # Handle user choice for Yes
-        if choice in ["1", "y", "yes"]:
-            if case_str == "000000":
-                # If the case ID is '000000', ask for a valid MISP event ID
-                case_str = Prompt.ask("[bold]Please enter the MISP event ID[/bold]")
-
-            # Proceed with MISP processing and submission
-            misp_event(case_str, csvfilescreated, None, None)
-
-        # Handle user choice for No
-        elif choice in ["2", "n", "no"]:
-            console.print("[bold yellow]MISP event not created.[/bold yellow]")
-
-        # Invalid input handling
-        else:
-            console.print("[bold red]Invalid choice. Please enter a valid option.[/bold red]")
-            misp_choice(case_str, csvfilescreated)  # Recursively prompt until valid input
+            misp_choice(case_str, csvfilescreated, template_file, template)  # Recursively prompt until valid input
 
     except KeyboardInterrupt:
         console.print("[bold red]Exiting...[/bold red]")  # Graceful exit on keyboard interrupt

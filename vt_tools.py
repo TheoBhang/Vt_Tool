@@ -17,9 +17,10 @@ from rich.prompt import Prompt
 from rich.table import Table
 
 from app.DataHandler.utils import get_api_key, get_proxy, get_user_choice
+from app.errors import ValidationError, VirusTotalAPIError
 from app.FileHandler.create_table import CustomPrettyTable as cpt
 from app.FileHandler.read_file import ValueReader
-from app.MISP.vt_tools2misp import misp_choice, misp_choice_template
+from app.MISP.vt_tools2misp import misp_choice
 from init import Initializator
 
 console = Console()
@@ -256,7 +257,9 @@ def parse_arguments() -> argparse.Namespace:
     return args
 
 
-def get_remaining_quota(api_key: str, proxy: str = None, args: argparse.Namespace = None) -> int:
+def get_remaining_quota(
+    api_key: str, proxy: str = None, args: argparse.Namespace = None, verify_ssl: bool = True
+) -> int:
     """Returns the number of hashes that could be queried within this run."""
 
     url = f"https://www.virustotal.com/api/v3/users/{api_key}/overall_quotas"
@@ -268,7 +271,7 @@ def get_remaining_quota(api_key: str, proxy: str = None, args: argparse.Namespac
             session.proxies.update({"http": proxy, "https": proxy})
 
         try:
-            response = session.get(url, headers=headers)
+            response = session.get(url, headers=headers, verify=verify_ssl)
             response.raise_for_status()  # Will raise an exception for HTTP error codes
         except RequestException as e:
             logging.error(f"Error retrieving VT Quota: {e}")
@@ -278,16 +281,26 @@ def get_remaining_quota(api_key: str, proxy: str = None, args: argparse.Namespac
 
         # Parse the response if successful
         if response.status_code == 200:
-            json_response = response.json()
-            allowed_hourly_queries = json_response["data"]["api_requests_hourly"][
-                "user"
-            ]["allowed"]
-            used_hourly_queries = json_response["data"]["api_requests_hourly"]["user"][
-                "used"
-            ]
-            remaining_quota = allowed_hourly_queries - used_hourly_queries
+            try:
+                json_response = response.json()
+                allowed_hourly_queries = json_response["data"]["api_requests_hourly"][
+                    "user"
+                ]["allowed"]
+                used_hourly_queries = json_response["data"]["api_requests_hourly"]["user"][
+                    "used"
+                ]
+            except (ValueError, KeyError, TypeError) as e:
+                # A 200 with an unexpected body (HTML from a proxy/WAF, or a
+                # VT API schema change dropping a key) used to propagate
+                # uncaught here, aborting the whole run with a raw
+                # traceback instead of the graceful message the
+                # RequestException branch above already provides.
+                logging.error(f"Error retrieving VT Quota: {e}")
+                if args and not args.non_interactive:
+                    console.print(f"[bold red]Error retrieving VT Quota: {e}[/bold red]")
+                return 0
 
-            return remaining_quota
+            return allowed_hourly_queries - used_hourly_queries
         else:
             # Log and console print on error response
             logging.error(
@@ -336,181 +349,172 @@ def analyze_values(args: argparse.Namespace, value_types: List[str]) -> None:
     case_id = str(args.case_id or 0).zfill(6)
 
     init = Initializator(api_key, proxy, case_id)
-    database = "vttools.sqlite"
     quota_saved = 0
     error_values = 0
 
-    # Establish DB connection
-    with init.db_handler.create_connection(database) as conn:
-        if conn is None:
-            logging.error("Database connection failed.")
-            return
+    # Start the analysis
+    start_time = datetime.now()
+    if not args.non_interactive:
+        console.print("\n[bold blue]Checking for remaining queries...[/bold blue]")
+    else:
+        logging.info("Checking for remaining queries...")
 
-        init.db_handler.create_schema(conn)
-
-        # Start the analysis
-        start_time = datetime.now()
-        if not args.non_interactive:
-            console.print("\n[bold blue]Checking for remaining queries...[/bold blue]")
-        else:
-            logging.info("Checking for remaining queries...")
-
-        remaining_queries = get_remaining_quota(init.api_key, init.proxy,args)
-        if remaining_queries == 0:
-            if not args.non_interactive:
-                console.print(
-                    "[bold yellow]No queries remaining for this hour.[/bold yellow]"
-                )
-                console.print("[bold blue]Check your API key before analysis.[/bold blue]")
-                return
-            else:
-                logging.error("No queries remaining for this hour.")
-                logging.warning("Check your API key before analysis.")
-                return
-        if not args.non_interactive:
-            console.print(f"Remaining queries for this hour: {remaining_queries}")
-        else:
-            logging.info(f"Remaining queries for this hour: {remaining_queries}")
-
-        # Retrieve values to analyze
-        if args.template_file:
-            table = Table(title="Template Types", title_style="bold yellow")
-            table.add_column("Key", justify="center", style="cyan", no_wrap=True)
-            table.add_column("Type", justify="center", style="magenta")
-
-            for key, value in TEMPLATE_OPTIONS.items():
-                table.add_row(key, value)
-
-            console.print(table)
-
-            choice = Prompt.ask(
-                "[bold green]Select an option[/bold green]",
-                choices=TEMPLATE_OPTIONS.keys(),
-                default="1",
-            )
-            values = ValueReader(args.template_file, args.values).read_template_values(
-                TEMPLATE_OPTIONS[choice]
-            )
-        else:
-            values = ValueReader(args.input_file, args.values).read_values()
-        if not values:
-            if not args.non_interactive:
-                console.print("[bold yellow]No values to analyze.[/bold yellow]")
-            else:
-                logging.warning("No values to analyze.")
-            return
+    remaining_queries = get_remaining_quota(init.api_key, init.proxy, args, init.ssl_verify)
+    if remaining_queries == 0:
         if not args.non_interactive:
             console.print(
-                f"[bold blue]This analysis will use {count_iocs(values)} out of your {remaining_queries} hourly quota.[/bold blue]\n"
+                "[bold yellow]No queries remaining for this hour.[/bold yellow]"
             )
+            console.print("[bold blue]Check your API key before analysis.[/bold blue]")
+            return
+        else:
+            logging.error("No queries remaining for this hour.")
+            logging.warning("Check your API key before analysis.")
+            return
+    if not args.non_interactive:
+        console.print(f"Remaining queries for this hour: {remaining_queries}")
+    else:
+        logging.info(f"Remaining queries for this hour: {remaining_queries}")
+
+    # Retrieve values to analyze
+    if args.template_file:
+        table = Table(title="Template Types", title_style="bold yellow")
+        table.add_column("Key", justify="center", style="cyan", no_wrap=True)
+        table.add_column("Type", justify="center", style="magenta")
+
+        for key, value in TEMPLATE_OPTIONS.items():
+            table.add_row(key, value)
+
+        console.print(table)
+
+        choice = Prompt.ask(
+            "[bold green]Select an option[/bold green]",
+            choices=TEMPLATE_OPTIONS.keys(),
+            default="1",
+        )
+        values = ValueReader(args.template_file, args.values).read_template_values(
+            TEMPLATE_OPTIONS[choice]
+        )
+    else:
+        values = ValueReader(args.input_file, args.values).read_values()
+    if not values:
+        if not args.non_interactive:
+            console.print("[bold yellow]No values to analyze.[/bold yellow]")
+        else:
+            logging.warning("No values to analyze.")
+        return
+    if not args.non_interactive:
+        console.print(
+            f"[bold blue]This analysis will use {count_iocs(values)} out of your {remaining_queries} hourly quota.[/bold blue]\n"
+        )
+    else:
+        logging.info(
+            f"This analysis will use {count_iocs(values)} out of your {remaining_queries} hourly quota."
+        )
+
+    if remaining_queries < count_iocs(values):
+        if not args.non_interactive:
+            console.print(
+                f"[bold yellow]Warning:[/bold yellow] You have {remaining_queries} queries left for this hour, but you are trying to analyze {len(values)} values."
+            )
+            console.print(
+                "[bold yellow]Some values may be skipped to avoid exceeding the quota.[/bold yellow]\n"
+            )
+        else:
+            logging.warning(
+                f"Warning: You have {remaining_queries} queries left for this hour, but you are trying to analyze {len(values)} values."
+            )
+            logging.warning("Some values may be skipped to avoid exceeding the quota.")
+
+    # Start the analysis process for each value type
+    for value_type in value_types:
+        if not values.get(value_type):
+            if not args.non_interactive:
+                console.print(
+                    f"[bold yellow]No {value_type[:-1].upper()} values to analyze.[/bold yellow]"
+                )
+            else:
+                logging.info(f"No {value_type[:-1].upper()} values to analyze.")
+            continue
+        if not args.non_interactive:
+            console.print(
+                Panel(
+                    Markdown("## Analysis Started"),
+                    title=f"[bold green]{value_type[:-1].upper()} Analysis[/bold green]",
+                    border_style="green",
+                )
+            )
+        else:
+            logging.info(f"Starting {value_type[:-1].upper()} analysis...")
+
+        results, skipped_values, error_values = analyze_value_type(
+            init, value_type, values[value_type], remaining_queries
+        )
+        quota_saved += skipped_values
+
+        if results:
+            process_results(init, results, value_type)
+
+    # Post-analysis report
+    csv_files_created = list(set(init.output.csvfilescreated))
+    quota_final = get_remaining_quota(init.api_key, init.proxy, args, init.ssl_verify)
+    if not args.non_interactive:
+        if quota_saved == 0:
+            console.print(
+                "[bold green]Analysis completed. No values were skipped.[/bold green]"
+            )
+        else:
+            console.print(
+                f"[bold green]Analysis completed. {quota_saved} values were skipped as they already exist in the database.[/bold green]"
+            )
+
+        console.print(
+            f"[bold blue]Errors occurred for {error_values} values.[/bold blue]"
+        )
+        console.print(
+            f"[bold yellow]Remaining queries for this hour: {quota_final}[/bold yellow]"
+        )
+    else:
+        if quota_saved == 0:
+            logging.info("Analysis completed. No values were skipped.")
         else:
             logging.info(
-                f"This analysis will use {count_iocs(values)} out of your {remaining_queries} hourly quota."
+                f"Analysis completed. {quota_saved} values were skipped as they already exist in the database."
             )
 
-        if remaining_queries < count_iocs(values):
-            if not args.non_interactive:
-                console.print(
-                    f"[bold yellow]Warning:[/bold yellow] You have {remaining_queries} queries left for this hour, but you are trying to analyze {len(values)} values."
-                )
-                console.print(
-                    "[bold yellow]Some values may be skipped to avoid exceeding the quota.[/bold yellow]\n"
-                )
-            else:
-                logging.warning(
-                    f"Warning: You have {remaining_queries} queries left for this hour, but you are trying to analyze {len(values)} values."
-                )
-                logging.warning("Some values may be skipped to avoid exceeding the quota.")
+        logging.info(f"Errors occurred for {error_values} values.")
+        logging.info(f"Remaining queries for this hour: {quota_final}")
 
-        # Start the analysis process for each value type
-        for value_type in value_types:
-            if not values.get(value_type):
-                if not args.non_interactive:
-                    console.print(
-                        f"[bold yellow]No {value_type[:-1].upper()} values to analyze.[/bold yellow]"
-                    )
-                else:
-                    logging.info(f"No {value_type[:-1].upper()} values to analyze.")
-                continue
-            if not args.non_interactive:
-                console.print(
-                    Panel(
-                        Markdown("## Analysis Started"),
-                        title=f"[bold green]{value_type[:-1].upper()} Analysis[/bold green]",
-                        border_style="green",
-                    )
-                )
-            else:
-                logging.info(f"Starting {value_type[:-1].upper()} analysis...")
+    total_time = datetime.now() - start_time
+    if not args.non_interactive:
+        console.print(f"[bold blue]Total time taken: {total_time}[/bold blue]")
+    else:
+        logging.info(f"Total time taken: {total_time}")
 
-            results, skipped_values, error_values = analyze_value_type(
-                init, value_type, values[value_type], remaining_queries, conn
-            )
-            quota_saved += skipped_values
-
-            if results:
-                process_results(init, results, value_type)
-
-        # Post-analysis report
-        csv_files_created = list(set(init.output.csvfilescreated))
-        quota_final = get_remaining_quota(init.api_key, init.proxy,args)
-        if not args.non_interactive:
-            if quota_saved == 0:
-                console.print(
-                    "[bold green]Analysis completed. No values were skipped.[/bold green]"
-                )
-            else:
-                console.print(
-                    f"[bold green]Analysis completed. {quota_saved} values were skipped as they already exist in the database.[/bold green]"
-                )
-
+    # MISP-related action
+    if args.template_file:
+        misp_choice(
+            case_str=case_id,
+            csvfilescreated=csv_files_created,
+            template_file=args.template_file,
+            template=TEMPLATE_OPTIONS[choice],
+        )
+    else:
+        if args.non_interactive:
             console.print(
-                f"[bold blue]Errors occurred for {error_values} values.[/bold blue]"
-            )
-            console.print(
-                f"[bold yellow]Remaining queries for this hour: {quota_final}[/bold yellow]"
+                "[bold blue]Non-interactive mode: Skipping MISP integration step.[/bold blue]"
             )
         else:
-            if quota_saved == 0:
-                logging.info("Analysis completed. No values were skipped.")
-            else:
-                logging.info(
-                    f"Analysis completed. {quota_saved} values were skipped as they already exist in the database."
-                )
+            misp_choice(case_str=case_id, csvfilescreated=csv_files_created)
 
-            logging.info(f"Errors occurred for {error_values} values.")
-            logging.info(f"Remaining queries for this hour: {quota_final}")
+    console.print("[bold green]Thank you for using VT Tools! 👍[/bold green]")
 
-        total_time = datetime.now() - start_time
-        if not args.non_interactive:
-            console.print(f"[bold blue]Total time taken: {total_time}[/bold blue]")
-        else:
-            logging.info(f"Total time taken: {total_time}")
-
-        # MISP-related action
-        if args.template_file:
-            misp_choice_template(
-                case_str=case_id,
-                csvfilescreated=csv_files_created,
-                template_file=args.template_file,
-                template=TEMPLATE_OPTIONS[choice],
-            )
-        else:
-            if args.non_interactive:
-                console.print(
-                    "[bold blue]Non-interactive mode: Skipping MISP integration step.[/bold blue]"
-                )
-            else:
-                misp_choice(case_str=case_id, csvfilescreated=csv_files_created)
-
-        console.print("[bold green]Thank you for using VT Tools! 👍[/bold green]")
-
-        # Close resources
-        close_resources(init)
+    # Close resources
+    close_resources(init)
 
 
 def analyze_value_type(
-    init: Initializator, value_type: str, values: List[str], remaining_queries, conn
+    init: Initializator, value_type: str, values: List[str], remaining_queries
 ) -> tuple:
     """Analyze values of a specific type (e.g., hashes, URLs, domains)."""
     results = []
@@ -519,116 +523,41 @@ def analyze_value_type(
 
     for value in values:
         if remaining_queries == 0:
-            console.print(
-                "[bold yellow]No queries remaining for this hour.[/bold yellow]"
-            )
+            console.print("[bold yellow]No queries remaining for this hour.[/bold yellow]")
             break
-        else:
-            try:
-                result, skipped, errors = analyze_single_value(
-                    init, value_type, value, conn
-                )
-                results.extend(result)
-                skipped_values += skipped
-                error_values += errors
-
-            except Exception as e:
-                logging.error(f"Error analyzing value {value}: {e}")
-                error_values += 1
+        result, skipped, errors = analyze_single_value(init, value_type, value)
+        results.extend(result)
+        skipped_values += skipped
+        error_values += errors
+        # A cache hit (skipped=1) never touched the VT API, so it doesn't
+        # consume real quota - only decrement for values that did. Without
+        # this, remaining_queries never changes across the loop, so the
+        # `== 0` guard above only ever fires when quota was already
+        # exhausted before this call started, not when a large batch
+        # exhausts it mid-run.
+        if not skipped:
+            remaining_queries -= 1
 
     return results, skipped_values, error_values
 
 
-def analyze_single_value(
-    init: Initializator, value_type: str, value: str, conn
-) -> tuple:
-    """Analyze a single value (check if exists, retrieve or analyze)."""
-    if value_exists(init, value, value_type, conn):
-        console.print(
-            f"[bold yellow]Value already exists in LOCAL database: {value}[/bold yellow]"
-        )
-        report = get_existing_report(init, value, value_type, conn)
-        return [report], 1, 0
-    else:
-        result = analyze_value(init, value_type, value)
-        if result:
-            return [result], 0, 0
-        else:
-            return [], 0, 1
-
-
-def get_existing_report(init: Initializator, value: str, value_type: str, conn) -> dict:
-    """Retrieve existing report for a value from the local database."""
+def analyze_single_value(init: Initializator, value_type: str, value: str) -> tuple:
+    """Analyze a single value via AnalysisService (cache-check + VT fetch + cache-store)."""
     try:
-        value_type_str = validate_value(init, value, value_type)
-        if value_type_str and value_type_str not in [
-            "Private IPv4",
-            "Loopback IPv4",
-            "Unspecified IPv4",
-            "Link-local IPv4",
-            "Reserved IPv4",
-            "SHA-224",
-            "SHA-384",
-            "SHA-512",
-            "SSDEEP",
-        ]:
-            return init.db_handler.get_report(value, value_type_str.upper(), conn)
+        report, from_cache = init.analysis.analyze(value, value_type)
+        if from_cache:
+            console.print(f"[bold yellow]Value already exists in LOCAL database: {value}[/bold yellow]")
+            return [report], 1, 0
+        return [report], 0, 0
+    except ValidationError as e:
+        console.print(f"[bold red]{e}[/bold red]")
+        return [], 0, 1
+    except VirusTotalAPIError as e:
+        console.print(f"[bold red]Error analyzing {value_type[:-1]}: {value}[/bold red] - {e}")
+        return [], 0, 1
     except Exception as e:
-        console.print(
-            f"[bold red]Error retrieving existing report for {value_type[:-1]}: {value}[/bold red] - {e}"
-        )
-    return {}
-
-
-def value_exists(init: Initializator, value: str, value_type: str, conn) -> bool:
-    """Check if a value exists in the local database."""
-    if value_type == "hashes":
-        return init.db_handler.exists(conn, value_type, value, value_type[:-2])
-    else:
-        if value_type == "ips":
-            return init.db_handler.exists(conn, value_type, value[0], value_type[:-1])
-        else:
-            return init.db_handler.exists(conn, value_type, value, value_type[:-1])
-
-
-def analyze_value(init: Initializator, value_type: str, value: str) -> dict:
-    """Analyze a single value using VirusTotal API."""
-    try:
-        value_type_str = validate_value(init, value, value_type)
-        if value_type_str and value_type_str not in [
-            "Private IPv4",
-            "Loopback IPv4",
-            "Unspecified IPv4",
-            "Link-local IPv4",
-            "Reserved IPv4",
-            "SHA-224",
-            "SHA-384",
-            "SHA-512",
-            "SSDEEP",
-        ]:
-            return init.reporter.get_report(value_type_str.upper(), value)
-        else:
-            console.print(f"[bold red]Invalid {value_type[:-1]}: {value}[/bold red]")
-    except Exception as e:
-        console.print(
-            f"[bold red]Error analyzing {value_type[:-1]}: {value}[/bold red] - {e}"
-        )
-    return None
-
-
-def validate_value(init: Initializator, value: str, value_type: str) -> str:
-    """Validate value based on its type."""
-    try:
-        if value_type == "hashes":
-            return init.validator.validate_hash(value)
-        else:
-            validator_func = getattr(init.validator, f"validate_{value_type[:-1]}")
-            return validator_func(value)
-    except AttributeError:
-        console.print(
-            f"[bold red]No validator found for value type: {value_type}[/bold red]"
-        )
-    return ""
+        console.print(f"[bold red]Error analyzing {value_type[:-1]}: {value}[/bold red] - {e}")
+        return [], 0, 1
 
 
 def process_results(init: Initializator, results: List[Dict], value_type: str) -> None:
@@ -657,17 +586,20 @@ def process_results(init: Initializator, results: List[Dict], value_type: str) -
 
 
 def extract_table_data(results: List[Dict]) -> Tuple[List[str], List[List[str]]]:
-    """Extract headers and row values directly from JSON objects."""
+    """Extract headers and row values directly from the flat report dicts."""
 
     headers = set()
-    rows = []
-
     for result in results:
         if not isinstance(result, dict):
             continue
-        headers.update(result["csv_report"][0].keys())
+        headers.update(result.keys())
+
+    rows = []
+    for result in results:
+        if not isinstance(result, dict):
+            continue
         rows.append(
-            [str(result["csv_report"][0].get(header, "")) for header in headers]
+            [str(result.get(header, "")) for header in headers]
         )
 
     return list(headers), rows
@@ -676,10 +608,11 @@ def extract_table_data(results: List[Dict]) -> Tuple[List[str], List[List[str]]]
 def output_csv(init: Initializator, results: List[Dict], value_type: str) -> None:
     """Generate and save the CSV report based on the analysis results."""
     try:
-        # Collect all CSV reports from the results
-        total_csv_report = [result["csv_report"] for result in results]
+        # OutputHandler.output_to_csv expects List[List[Dict]] (each element a
+        # 1-item list wrapping one row's dict) - wrap each flat report to match
+        # its existing, unchanged interface.
+        total_csv_report = [[result] for result in results]
 
-        # Save CSV report
         init.output.output_to_csv(
             total_csv_report,
             f"{value_type[:-1].upper()}" if value_type != "hashes" else "HASH",

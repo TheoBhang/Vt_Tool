@@ -3,7 +3,6 @@ import os
 from datetime import datetime
 from typing import Dict, List
 from rich.console import Console
-from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.text import Text
 
@@ -80,7 +79,7 @@ class OutputHandler:
                 for obj in data:
                     try:
                         csv_writer.writerow(obj[0])
-                    except Exception as e:
+                    except Exception:
                         continue
 
         except Exception as e:

@@ -3,6 +3,15 @@
 /__pycache__
 /V2
 .dockerignore
+!vt-tool-ui/.dockerignore
 .env
 vttools.sqlite
+deployment/ci-stack.log
 __pycache__/
+.venv/
+*.tldextract.json.lock
+.worktrees/
+
+# Claude Code
+.claude/
+CLAUDE.md

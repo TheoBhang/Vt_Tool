@@ -3,13 +3,42 @@ import logging
 from pathlib import Path
 from typing import List, Optional, Literal, Union
 from datetime import datetime, timezone  # for working with dates and times
-from pytz import timezone as pytz_timezone
 
+from vt import url_id
 from rich.console import Console
 from rich.prompt import Prompt, InvalidResponse
 from rich.table import Table
 
 console = Console()
+
+
+def get_env(name: str, default: str) -> str:
+    """os.getenv with the two-arg default applied when the variable is
+    unset OR present-but-empty.
+
+    A bare `os.getenv(name, default)` only falls back to `default` when the
+    variable is absent from the environment - if it's present but blank
+    (`KEY=` with nothing after the `=`), os.getenv returns that empty
+    string, not the default. .env.example ships several vars this way
+    (VT_CACHE_TTL_HOURS, REDIS_URL, VT_HISTORY_DB_PATH, VTSSLVERIFY,
+    CORS_ALLOWED_ORIGINS), and load_dotenv() sets each to "" rather than
+    leaving it unset - this has caused real crashes (float('') on an empty
+    TTL) and silent misconfiguration (TLS verification disabled, an empty
+    CORS allow-list rejecting every origin) more than once. Route every
+    env-var-with-a-default read through this function instead of a raw
+    two-arg os.getenv call.
+    """
+    value = os.getenv(name)
+    return value if value else default
+
+
+def build_virustotal_link(value, value_type: str) -> str:
+    """Build the VirusTotal GUI URL for a given value."""
+    if value_type == "URL":
+        return f"https://www.virustotal.com/gui/url/{url_id(value)}"
+    if isinstance(value, tuple):
+        value = value[0]
+    return f"https://www.virustotal.com/gui/search/{value}"
 
 ANALYSIS_OPTIONS = {
     "1": "IPs",
@@ -99,6 +128,22 @@ def get_proxy(proxy: Optional[str] = None, env_var: str = "PROXY") -> str:
         return env_proxy
 
     logger.error("No proxy provided. Please specify a proxy or set the environment variable.")
+
+
+def get_ssl_verify(env_var: str = "VTSSLVERIFY") -> bool:
+    """
+    Retrieve whether to verify VirusTotal's TLS certificate from an environment
+    variable. Defaults to True (verify) when unset - only disable this behind
+    a trusted proxy doing TLS inspection.
+
+    Parameters:
+    - env_var (str): Environment variable name to read (default: "VTSSLVERIFY").
+
+    Returns:
+    - bool: True to verify the TLS certificate, False to skip verification.
+    """
+
+    return get_env(env_var, "true").strip().lower() in ("1", "true", "yes", "on")
 
 
 def display_menu() -> str:

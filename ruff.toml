@@ -1,0 +1,11 @@
+# Ruff configuration.
+target-version = "py311"
+line-length = 120
+
+[lint]
+# Explicit select, matching ruff's own documented default (E4, E7, E9, F).
+# Spelled out rather than left implicit: an implicit/unset `select` rides
+# whatever rule set a given ruff release's default happens to be, and can
+# silently pull in far more rules on a version bump, failing CI on findings
+# unrelated to whatever a given PR actually touched.
+select = ["E4", "E7", "E9", "F"]

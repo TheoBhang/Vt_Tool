@@ -1,0 +1,7 @@
+node_modules
+dist
+.pnpm-store
+test-results
+playwright-report
+*.tsbuildinfo
+e2e

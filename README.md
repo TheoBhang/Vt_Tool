@@ -14,7 +14,9 @@ Welcome to VT_Tool by THA-CERT!
 > VirusTotal analysis tool with local caching and optional MISP integration.
 
 `vt_tool` retrieves analysis information for IP addresses, hashes, URLs, and domains using the VirusTotal v3 API.
-It supports interactive and non-interactive modes, local result caching via SQLite, structured CSV/TXT export, and MISP integration.
+It supports interactive and non-interactive modes, local result caching with a configurable TTL, structured CSV/TXT export, and MISP integration.
+
+This README covers the CLI, the tool's original and primary interface. vt_tool can also run as a long-running HTTP service for automation/SOAR integration — jump to [Running as a Service](#running-as-a-service), or go straight to [`deployment/README.md`](deployment/README.md) for the Docker Compose deployment of that service.
 
 ## Features
 
@@ -25,13 +27,14 @@ It supports interactive and non-interactive modes, local result caching via SQLi
   * URLs
   * Domains
 * Automatic quota checking (hourly VT API quota)
-* Local SQLite caching (avoids re-querying existing values)
+* Local caching with configurable TTL — SQLite by default, or any SQLAlchemy-supported database
 * CSV and TXT report generation
 * Template-based input processing
 * Optional MISP event creation/update
 * Proxy support
 * Interactive CLI (Rich UI)
 * Fully non-interactive automation mode
+* Optional HTTP API + background worker for programmatic/automated use (see [Running as a Service](#running-as-a-service))
 
 ## Architecture Overview
 
@@ -50,7 +53,7 @@ CLI (argparse)
 
 ## Requirements
 
-* Python 3.8+
+* Python 3.11+
 * VirusTotal API key
 * Internet access
 * Optional: MISP instance (for integration)
@@ -98,6 +101,10 @@ export VTAPIKEY="your_api_key"
 ```bash
 --proxy http://127.0.0.1:8080
 ```
+
+### 3️⃣ TLS verification (optional)
+
+`VTSSLVERIFY` (env var only, no CLI flag) — defaults to `true`. Set to `false` to skip TLS certificate verification on VirusTotal API traffic, for use behind a proxy that does TLS inspection. Only disable this on a proxy you trust — it removes protection against man-in-the-middle attacks otherwise.
 
 ## Usage
 
@@ -199,8 +206,7 @@ Before analysis begins:
 
 ## Local Database
 
-* SQLite database: `vttools.sqlite`
-* Automatically created if not present
+* SQLite database by default: `vttools.sqlite`, automatically created if not present
 * Prevents re-querying existing values
 * Skips:
 
@@ -208,6 +214,13 @@ Before analysis begins:
   * Loopback IPs
   * Reserved IP ranges
   * Unsupported hash types (SHA-224, SHA-384, SHA-512, SSDEEP)
+
+### Cache configuration
+
+Two environment variables (see `.env.example`) control caching, with sensible defaults if unset:
+
+* `VT_CACHE_TTL_HOURS` — how long a cached result stays valid before it's treated as stale and re-queried. Default `0`: every value is re-queried on each run regardless of what's already cached. Set a positive value (e.g. `24`) to actually reuse cached results across runs and save API quota.
+* `VT_CACHE_DB_URL` — the cache backend. Defaults to the local `vttools.sqlite` file; can point to any SQLAlchemy-supported database (e.g. Postgres, MySQL) for shared/multi-instance caching.
 
 ## Output
 
@@ -301,6 +314,17 @@ Execution ends with:
 * Proxy support for controlled outbound traffic
 * Local DB prevents unnecessary API calls
 * Invalid or sensitive IP ranges are filtered
+* TLS verification on VirusTotal traffic is on by default; `VTSSLVERIFY=false` should only be used behind a trusted TLS-inspecting proxy
+
+## Running as a Service
+
+vt_tool can also run as a long-running HTTP service instead of a one-shot CLI invocation — useful for automation, SOAR integration, or anything that wants to submit lookups programmatically rather than shelling out to the CLI.
+
+* **API** (`app/api/main.py`, FastAPI) — `POST /analyze` queues a lookup, `GET /jobs/{job_id}` polls its status, `GET /health` reports readiness.
+* **Worker** (`app/worker/`, [arq](https://arq-docs.helpmanual.io/)) — picks jobs off a Redis queue and performs the VirusTotal lookup, sharing the same cache and analysis logic as the CLI.
+* **Frontend** (`vt-tool-ui/`, React) — a web UI that submits IOCs to the API and polls for results; see [`vt-tool-ui/README.md`](vt-tool-ui/README.md).
+
+For a Docker Compose deployment of the API + worker + UI + Redis, see [`deployment/README.md`](deployment/README.md).
 
 ## Development
 
@@ -310,13 +334,31 @@ Execution ends with:
 python vt_tools.py --help
 ```
 
+### Run tests / lint
+
+```bash
+python -m unittest discover -s tests -t . -v
+ruff check .
+```
+
+See `CONTRIBUTING.md` for the full development workflow.
+
 ### Code structure highlights
+
+CLI (`vt_tools.py`, `init.py`):
 
 * `Initializator` → handles DB, validator, reporter
 * `ValueReader` → parses input/template files
 * `db_handler` → manages SQLite
 * `reporter` → calls VT API
 * `validator` → validates IOC format
+
+Shared library / service layer, used by both the CLI and the API:
+
+* `app/services/` → `AnalysisService` and related services: analysis, caching, and validation logic shared across the CLI and the API
+* `app/cache_backends/` → pluggable cache storage (SQLite file, or any SQLAlchemy-supported database via `VT_CACHE_DB_URL`)
+* `app/api/` → FastAPI HTTP service
+* `app/worker/` → arq background worker
 
 ## License
 

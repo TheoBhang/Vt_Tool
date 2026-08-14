@@ -1,10 +1,9 @@
 import os  # for interacting with the operating system
 import re  # for working with regular expressions
 import sys  # for interacting with the Python interpreter
-import csv
 from collections import defaultdict, Counter
 from dataclasses import dataclass
-from typing import Dict, List, Callable
+from typing import Dict, List
 from typing import Pattern as RePattern
 
 
@@ -310,14 +309,13 @@ class ValueReader:
             print(f"File {self.fname} does not exist")
             return self._get_empty_values()
 
-        try:
-            csv_values = defaultdict(list)
-            exit("CSV file reading not implemented yet")
-
-        except (IOError, Exception) as e:
-            # Catch any I/O or unexpected errors
-            print(f"Error reading file {self.fname}: {e}")
-            return self._get_empty_values
+        # CSV template reading is not implemented yet - degrade gracefully
+        # (empty result, caller's existing "no values to analyze" handling)
+        # rather than the previous exit() call, which raised SystemExit and
+        # hard-crashed the whole process since SystemExit isn't caught by
+        # `except Exception`.
+        print(f"CSV template file reading is not implemented yet: {self.fname}")
+        return self._get_empty_values()
 
     def _process_file_lines(self, value_extractor: ValueExtractor):
         """
@@ -329,9 +327,9 @@ class ValueReader:
         with open(self.fname, encoding="utf8") as file:
             for line in file:
                 line_values = value_extractor.sort_values(line, is_file=True)
-                self._accumulate_values(line_values)
+                self._accumulate_file_values(line_values)
 
-    def _accumulate_values(self, line_values: dict):
+    def _accumulate_file_values(self, line_values: dict):
         """
         Accumulate the extracted values into the dictionary.
 
@@ -366,21 +364,43 @@ class ValueReader:
         # Return the final cleaned dictionary
         return self._extract_and_filter_domains(combined_values)
 
+    def read_from_values(self) -> dict:
+        """
+        Extract values passed directly as positional command-line arguments.
+
+        Returns:
+            dict: A dictionary with keys 'ips', 'urls', 'hashes', 'keys', and 'domains'.
+        """
+        if not self.values:
+            return self._get_empty_values()
+
+        value_extractor = ValueExtractor()
+        dict_values_cli: Dict[str, List[str]] = defaultdict(list)
+        for value in self.values:
+            line_values = value_extractor.sort_values(value, is_file=False)
+            for key, values in line_values.items():
+                dict_values_cli[key].extend(values)
+
+        return dict(dict_values_cli)
+
     def read_values(self) -> dict:
         """
-        Read values from standard input and file, remove duplicates and None values, 
-        and extract domains. Returns a dictionary with the extracted values.
+        Read values from standard input, a file, and positional command-line
+        arguments, remove duplicates and None values, and extract domains.
+        Returns a dictionary with the extracted values.
 
         Returns:
             dict: A dictionary with 'ips', 'urls', 'hashes', 'domains' as keys, each
                   containing a list of unique extracted values.
         """
-        # Read values from standard input and file
+        # Read values from standard input, file, and CLI positional arguments
         stdin_values = self.read_from_stdin()
         file_values = self.read_from_file()
+        cli_values = self.read_from_values()
 
         # Combine values and remove duplicates and None values
         combined_values = self._combine_and_clean_values(stdin_values, file_values)
+        combined_values = self._combine_and_clean_values(combined_values, cli_values)
 
         # Return the final cleaned dictionary
         return self._extract_and_filter_domains(combined_values)
@@ -397,10 +417,15 @@ class ValueReader:
             dict: A dictionary with keys 'ips', 'urls', 'hashes', 'keys', and 'domains',
                   containing the merged and cleaned values.
         """
-        # Merge values from stdin and file and deduplicate
+        # Merge values from stdin and file and deduplicate. Union of both
+        # dicts' keys, not just stdin_values' - read_from_stdin() can return
+        # a bare {} (no keys at all) when stdin is open but has zero lines
+        # (e.g. non-interactive mode with no tty attached), and iterating
+        # only stdin_values.keys() would then silently drop every key
+        # file_values has, however many keys it may have.
         combined_values = defaultdict(list)
-        for key in stdin_values.keys():
-            combined_values[key] = list(set(stdin_values[key] + file_values[key]))
+        for key in set(stdin_values.keys()) | set(file_values.keys()):
+            combined_values[key] = list(set(stdin_values.get(key, []) + file_values.get(key, [])))
 
         # Remove None values from the lists
         return {key: list(filter(None, values)) for key, values in combined_values.items()}

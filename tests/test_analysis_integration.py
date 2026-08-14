@@ -1,0 +1,78 @@
+import tempfile
+import unittest
+from unittest import mock
+
+from vt import APIError
+
+from app.cache_backends.sqlite_backend import SQLiteCacheBackend
+from app.services.analysis_service import AnalysisService
+from app.services.cache_service import ReportCacheService
+from app.services.validation_service import ValidationService
+from app.services.virustotal_service import VirusTotalService
+
+
+class AnalysisServiceIntegrationTests(unittest.TestCase):
+    """Wires the real services together (mocking only the vt.Client, the
+    actual external boundary) to catch shape mismatches no single service's
+    mocked unit tests can see."""
+
+    def setUp(self):
+        self.tmp = tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False)
+        self.tmp.close()
+        self.vt_client = mock.Mock()
+        self.service = AnalysisService(
+            validation=ValidationService(),
+            virustotal=VirusTotalService(self.vt_client),
+            cache=ReportCacheService(SQLiteCacheBackend(self.tmp.name)),
+        )
+
+    def test_not_found_domain_produces_a_full_shaped_row_not_a_stub(self):
+        # "nosuch.example" is rejected by DataValidator.validate_domain itself
+        # (".example" is an RFC 2606 reserved TLD, not in the public suffix
+        # list tldextract uses), which would raise ValidationError before ever
+        # reaching VirusTotalService - unrelated to the bug under test. Use a
+        # syntactically-ordinary domain instead so classify() succeeds and the
+        # VT lookup is what returns not-found.
+        self.vt_client.get_object.side_effect = APIError("NotFoundError", "not found")
+
+        report, from_cache = self.service.analyze("doesnotexist12345.org", "domains")
+
+        self.assertFalse(from_cache)
+        self.assertEqual(report["domain"], "doesnotexist12345.org")
+        self.assertIn("ip", report)
+        self.assertIn("creation_date", report)
+
+    def test_not_found_and_found_reports_share_the_same_key_set(self):
+        # extract_table_data() unions/pads headers across all results, so a
+        # length-vs-headers check here would pass even against the shape
+        # mismatch this test exists to catch (a not-found report with fewer
+        # keys than a found one). The real data-loss mechanism is downstream,
+        # in OutputHandler.output_to_csv, which derives CSV fieldnames from
+        # only the FIRST result's keys - a batch mixing a smaller not-found
+        # dict with a larger found dict silently drops rows there. Asserting
+        # the key sets are identical is what actually catches that mismatch.
+        found_report = mock.Mock()
+        found_report.last_analysis_stats = {"malicious": 1, "harmless": 50}
+        found_report.tags = []
+        found_report.whois = ""
+        found_report.port = None
+        found_report.creation_date = "2020-01-01"
+        found_report.reputation = 0
+        found_report.last_analysis_results = {}
+        found_report.last_dns_records = []
+        found_report.last_https_certificate = ""
+        found_report.registrar = ""
+
+        self.vt_client.get_object.side_effect = [
+            APIError("NotFoundError", "not found"),
+            found_report,
+        ]
+
+        not_found_report, _ = self.service.analyze("doesnotexist12345.org", "domains")
+        found_result, _ = self.service.analyze("example.com", "domains")
+
+        self.assertEqual(set(not_found_report), set(found_result))
+
+
+if __name__ == "__main__":
+    unittest.main()

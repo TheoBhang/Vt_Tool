@@ -1,0 +1,34 @@
+# Full-stack Docker smoke gate: build the real image, boot redis + vt-tool-api
+# + vt-tool-worker, and drive one lookup through the full chain (API -> Redis
+# -> worker -> job status). Lint + unittest run in ci.yml; this is the
+# containerized-deployment-path check that plain unittest can't catch.
+name: e2e-deploy
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Bootstrap + smoke
+        run: ./deployment/scripts/ci-smoke.sh
+      - name: Upload stack logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: docker-stack-log
+          path: deployment/ci-stack.log

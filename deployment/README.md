@@ -7,7 +7,7 @@ It relies on:
 * **Environment configuration via `.env`**
 * **Self-contained helper scripts** (`scripts/`)
 * **Optional Makefile shortcuts** for convenience
-* A comprehensive **checklist** that prepares all required files, directories, and certificates
+* A comprehensive **checklist** that verifies required binaries and prepares your `.env` file
 
 ## Requirements
 
@@ -30,11 +30,8 @@ make init
 
 This performs:
 
-* Creation of the `.env` file (or uses yours if present)
-* Directory structure validation
-* Download/creation of config files
-* Certificate generation (if missing)
-  …and other required system checks.
+* Verification of required binaries (`docker`, `docker compose`, `curl`)
+* Creation of the `.env` file from `.env.example` (or uses yours if present)
 
 This step ensures the project is ready to run.
 
@@ -69,8 +66,7 @@ make deploy
 This command runs:
 
 * Network checks
-* TLS/hostname replacement
-* Deployment script execution
+* Image pull (build-only for `vt-tool-api`/`vt-tool-worker`, real pull for `redis`), rebuild, and a clean restart
 
 ## 🛠 Development & Maintenance Commands
 
@@ -91,6 +87,25 @@ make pull
 ```bash
 make create-certs
 ```
+
+Not used by any service in this stack today — kept for a future reverse-proxy/TLS setup.
+
+## Services
+
+* **`vt-tool-api`** / **`vt-tool-worker`** — the FastAPI service and arq
+  background worker (`POST /analyze`, `GET /jobs/{id}`, `GET /health`).
+* **`vt-tool-ui`** — the React frontend (`vt-tool-ui/`), served by nginx.
+  Depends on `vt-tool-api` being healthy before it starts. Exposed on
+  `VT_TOOL_UI_PORT` (default `5173`; see `.env.example`). See
+  [`vt-tool-ui/README.md`](../vt-tool-ui/README.md) for frontend-specific
+  dev/build/test docs.
+* **`redis`** — the arq job queue backing `vt-tool-api`/`vt-tool-worker`.
+
+## MISP Integration
+
+This stack does not run a local MISP instance. vt_tool's MISP-submission feature (`vt_tools.py`'s template-file workflow, implemented in `app/MISP/vt_tools2misp.py`) is configured independently of this deployment: set `MISPURL`, `MISPKEY`, and `MISPSSLVERIFY` in the repository's root-level `.env` file (see the root `.env.example`), pointed at whichever MISP instance you actually run. This deployment stack has no opinion about where that instance lives.
+
+The deployed `vt-tool-api` container (and, via it, the UI's History page "Push to MISP" button) reads `MISPURL`/`MISPKEY` from **this directory's** `.env` (`deployment/.env`, loaded via `env_file` in `compose_apps.yaml`) - not the CLI's root `.env` above, which `vt-tool-api` never sees. See `deployment/.env.example` for the entries. If either is unset, the push endpoint returns `503` ("MISP is not configured") rather than failing at startup - this is the expected, safe default for a deployment with no MISP push configured, not a bug.
 
 ## Project Structure
 
