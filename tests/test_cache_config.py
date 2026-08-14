@@ -49,6 +49,18 @@ class BuildCacheServiceTests(unittest.TestCase):
         finally:
             service.backend.close()
 
+    def test_empty_string_ttl_env_var_falls_back_to_default(self):
+        # Regression test: a .env file with a blank `VT_CACHE_TTL_HOURS=` line
+        # (as ships in .env.example) sets the var to "" rather than leaving it
+        # unset - os.getenv's two-arg form then returns "" instead of the
+        # default, and float("") used to raise ValueError.
+        os.environ["VT_CACHE_TTL_HOURS"] = ""
+        service = build_cache_service()
+        try:
+            self.assertEqual(service.ttl, timedelta(hours=0))
+        finally:
+            service.backend.close()
+
 
 if __name__ == "__main__":
     unittest.main()
