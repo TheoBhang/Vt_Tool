@@ -8,4 +8,5 @@ tldextract
 sqlalchemy
 arq
 fastapi
+httpx
 uvicorn
