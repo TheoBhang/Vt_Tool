@@ -79,6 +79,20 @@ audit-trail concept.
 - **No auth, no per-user scoping.** Same stance as v1: this tool has no
   user identity today, so history is one shared list, exactly like MISP
   events are already shared across whoever uses a given MISP instance.
+- **History storage is an independent, raw SQLite connection, not the
+  cache's pluggable backend.** The report cache actually supports a
+  pluggable SQL backend today (`VT_CACHE_DB_URL` can point at Postgres/etc
+  via `SQLAlchemyCacheBackend`; the deployment's `compose_apps.yaml`
+  already sets this by default, so a real deployment runs the SQLAlchemy
+  backend even though the URL happens to be a SQLite file). `HistoryService`
+  deliberately does not plug into that — it opens its own `sqlite3`
+  connection to a fixed local file, ignoring `VT_CACHE_DB_URL` entirely.
+  This matches how the cache itself started SQLite-only before pluggable
+  backends were added later as their own separate concern, and is
+  consistent with this project's already-accepted "non-SQLite default"
+  gap (see `project_vt_tool_deployment_gaps.md`) — extending
+  `SQLAlchemyCacheBackend` to also cover history storage is real, avoidable
+  scope for what this sub-project needs.
 - **No retention/expiry policy for this sub-project.** History rows are
   kept indefinitely, same as the cache's TTL was its own separate, later
   concern in the original architecture — not bundled into this work.
@@ -107,7 +121,10 @@ Browser (vt-tool-ui)
         ▼
    vt-tool-api (FastAPI)
         │
-        ├─ HistoryService ── vttools.sqlite: new `analyses` table
+        ├─ HistoryService ── own raw sqlite3 connection, `vttools.sqlite`,
+        │                     new `analyses` table (independent of
+        │                     VT_CACHE_DB_URL / the cache's pluggable
+        │                     SQLAlchemy backend — see decision below)
         │
         └─ MISP push path ── ExpandedPyMISP(MISPURL, MISPKEY, ...)
                               (constructed the same way the CLI already
