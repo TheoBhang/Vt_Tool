@@ -11,6 +11,7 @@ from app.api.main import app
 from app.cache_backends.sqlite_backend import SQLiteCacheBackend
 from app.services.analysis_service import AnalysisService
 from app.services.cache_service import ReportCacheService
+from app.services.history_service import HistoryService
 from app.services.validation_service import ValidationService
 
 
@@ -225,6 +226,64 @@ class CorsTests(unittest.TestCase):
         # file's own import time (which the other test classes already use,
         # and which this reload doesn't affect either way).
         importlib.reload(main_module)
+
+
+class HistoryEndpointTests(unittest.TestCase):
+    def setUp(self):
+        fd, self.history_db_path = tempfile.mkstemp(suffix=".sqlite")
+        os.close(fd)
+        os.remove(self.history_db_path)
+        app.state.history = HistoryService(self.history_db_path)
+        self.client = TestClient(app)
+
+    def tearDown(self):
+        app.state.history.close()
+        if os.path.exists(self.history_db_path):
+            os.remove(self.history_db_path)
+
+    def test_save_analysis_returns_id_and_created_at(self):
+        response = self.client.post("/analyses", json={
+            "items": [{"value": "8.8.8.8", "value_type": "ips", "report": {"malicious_score": 0}, "error": None}],
+        })
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertIn("id", body)
+        self.assertIn("created_at", body)
+
+    def test_save_analysis_with_case_label(self):
+        response = self.client.post("/analyses", json={
+            "case_label": "incident-1",
+            "items": [],
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["case_label"], "incident-1")
+
+    def test_list_analyses_returns_saved_summaries(self):
+        self.client.post("/analyses", json={"items": [
+            {"value": "a", "value_type": "domains", "report": None, "error": "x"},
+        ]})
+        response = self.client.get("/analyses")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(len(body), 1)
+        self.assertEqual(body[0]["item_count"], 1)
+
+    def test_get_analysis_returns_full_detail(self):
+        items = [{"value": "example.com", "value_type": "domains", "report": {"domain": "example.com"}, "error": None}]
+        saved = self.client.post("/analyses", json={"items": items}).json()
+
+        response = self.client.get(f"/analyses/{saved['id']}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["items"], items)
+
+    def test_get_analysis_returns_404_when_missing(self):
+        response = self.client.get("/analyses/does-not-exist")
+        self.assertEqual(response.status_code, 404)
+
+    def test_list_analyses_caps_limit_at_100(self):
+        response = self.client.get("/analyses?limit=500")
+        self.assertEqual(response.status_code, 422)
 
 
 if __name__ == "__main__":

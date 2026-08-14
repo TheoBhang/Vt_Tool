@@ -5,7 +5,7 @@ from typing import Literal
 from arq import create_pool
 from arq.connections import RedisSettings
 from arq.jobs import Job, JobStatus
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -13,6 +13,7 @@ from app.DataHandler.validator import DataValidator
 from app.errors import ValidationError
 from app.services.analysis_service import AnalysisService
 from app.services.cache_config import build_cache_service
+from app.services.history_service import HistoryService
 from app.services.validation_service import ValidationService
 
 
@@ -26,8 +27,10 @@ async def lifespan(app: FastAPI):
     app.state.redis = await create_pool(
         RedisSettings.from_dsn(os.getenv("REDIS_URL", "redis://localhost:6379"))
     )
+    app.state.history = HistoryService("vttools.sqlite")
     yield
     app.state.analysis.cache.backend.close()
+    app.state.history.close()
     await app.state.redis.aclose()
 
 
@@ -107,3 +110,41 @@ async def get_job(job_id: str, request: Request):
     if info.success:
         return {"status": "complete", "report": info.result, "error": None}
     return {"status": "failed", "report": None, "error": str(info.result)}
+
+
+class AnalysisItem(BaseModel):
+    value: str
+    value_type: Literal["ips", "domains", "urls", "hashes"]
+    report: dict | None = None
+    error: str | None = None
+
+
+class SaveAnalysisRequest(BaseModel):
+    case_label: str | None = None
+    items: list[AnalysisItem]
+
+
+@app.post("/analyses")
+async def save_analysis(payload: SaveAnalysisRequest, request: Request):
+    history: HistoryService = request.app.state.history
+    items = [item.model_dump() for item in payload.items]
+    return history.save(items, case_label=payload.case_label)
+
+
+@app.get("/analyses")
+async def list_analyses(
+    request: Request,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    history: HistoryService = request.app.state.history
+    return history.list(limit=limit, offset=offset)
+
+
+@app.get("/analyses/{analysis_id}")
+async def get_analysis(analysis_id: str, request: Request):
+    history: HistoryService = request.app.state.history
+    result = history.get(analysis_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    return result
